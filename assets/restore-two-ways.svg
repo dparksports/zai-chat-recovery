@@ -1,43 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-label="Two ways to bring a recovered chat back">
-  <rect width="1200" height="620" rx="16" fill="#F5F5F7"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-label="Two ways to bring a chat back">
+  <rect width="1200" height="560" rx="16" fill="#F5F5F7"/>
   <g font-family="Segoe UI, system-ui, -apple-system, sans-serif">
-    <text x="600" y="60" fill="#1D1D1F" font-size="30" font-weight="700" text-anchor="middle">Bring a chat back — two ways</text>
-    <text x="600" y="92" fill="#86868B" font-size="17" text-anchor="middle">Both start from the same saved copy on your computer</text>
+    <text x="600" y="60" fill="#1D1D1F" font-size="32" font-weight="700" text-anchor="middle">Bring a chat back — two ways</text>
+    <text x="600" y="94" fill="#86868B" font-size="18" text-anchor="middle">Both use the copy saved on your computer</text>
 
-    <!-- paste path -->
-    <rect x="60" y="130" width="500" height="420" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+    <rect x="60" y="130" width="500" height="340" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
     <rect x="60" y="130" width="500" height="56" rx="14" fill="#E5F1FF"/>
-    <text x="310" y="165" fill="#007AFF" font-size="20" font-weight="700" text-anchor="middle">Continue by paste</text>
-    <g fill="#1D1D1F" font-size="16">
-      <circle cx="104" cy="222" r="12" fill="#007AFF"/><text x="104" y="227" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">1</text>
-      <text x="130" y="228">Click "Continue by paste"</text>
-      <circle cx="104" cy="282" r="12" fill="#007AFF"/><text x="104" y="287" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">2</text>
-      <text x="130" y="288">The whole conversation is copied for you</text>
-      <circle cx="104" cy="342" r="12" fill="#007AFF"/><text x="104" y="347" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">3</text>
-      <text x="130" y="348">chat.z.ai opens — paste into a new chat (Ctrl+V)</text>
-      <circle cx="104" cy="402" r="12" fill="#007AFF"/><text x="104" y="407" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">4</text>
-      <text x="130" y="408">Keep talking where you left off</text>
+    <text x="310" y="166" fill="#007AFF" font-size="23" font-weight="700" text-anchor="middle">Continue by paste</text>
+    <g>
+      <circle cx="112" cy="232" r="13" fill="#007AFF"/><text x="112" y="237" fill="#FFFFFF" font-size="14" font-weight="700" text-anchor="middle">1</text>
+      <text x="140" y="239" fill="#1D1D1F" font-size="20">Click "Continue by paste"</text>
+      <circle cx="112" cy="300" r="13" fill="#007AFF"/><text x="112" y="305" fill="#FFFFFF" font-size="14" font-weight="700" text-anchor="middle">2</text>
+      <text x="140" y="307" fill="#1D1D1F" font-size="20">Paste into a new chat on the website</text>
+      <circle cx="112" cy="368" r="13" fill="#007AFF"/><text x="112" y="373" fill="#FFFFFF" font-size="14" font-weight="700" text-anchor="middle">3</text>
+      <text x="140" y="375" fill="#1D1D1F" font-size="20">Keep talking where you left off</text>
     </g>
-    <rect x="96" y="452" width="428" height="66" rx="10" fill="#F5F5F7"/>
-    <text x="310" y="479" fill="#34C759" font-size="15" font-weight="700" text-anchor="middle">✓ Nothing is written to your account</text>
-    <text x="310" y="503" fill="#86868B" font-size="14" text-anchor="middle">Works with any backup — the safest path</text>
+    <text x="310" y="440" fill="#1E8E3E" font-size="18" font-weight="600" text-anchor="middle">Nothing is written to your account</text>
 
-    <!-- restore path -->
-    <rect x="640" y="130" width="500" height="420" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+    <rect x="640" y="130" width="500" height="340" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
     <rect x="640" y="130" width="500" height="56" rx="14" fill="#FFF3E0"/>
-    <text x="890" y="165" fill="#C35C00" font-size="20" font-weight="700" text-anchor="middle">Restore to my account…</text>
-    <g fill="#1D1D1F" font-size="16">
-      <circle cx="684" cy="222" r="12" fill="#C35C00"/><text x="684" y="227" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">1</text>
-      <text x="710" y="228">Click "Restore to my account…"</text>
-      <circle cx="684" cy="282" r="12" fill="#C35C00"/><text x="684" y="287" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">2</text>
-      <text x="710" y="288">A clear confirmation explains exactly what happens</text>
-      <circle cx="684" cy="342" r="12" fill="#C35C00"/><text x="684" y="347" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">3</text>
-      <text x="710" y="348">The conversation is recreated as a new chat</text>
-      <circle cx="684" cy="402" r="12" fill="#C35C00"/><text x="684" y="407" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">4</text>
-      <text x="710" y="408">It appears in your sidebar as "New Chat" — rename it</text>
+    <text x="890" y="166" fill="#C35C00" font-size="23" font-weight="700" text-anchor="middle">Restore to my account…</text>
+    <g>
+      <circle cx="692" cy="232" r="13" fill="#C35C00"/><text x="692" y="237" fill="#FFFFFF" font-size="14" font-weight="700" text-anchor="middle">1</text>
+      <text x="720" y="239" fill="#1D1D1F" font-size="20">Click "Restore to my account…"</text>
+      <circle cx="692" cy="300" r="13" fill="#C35C00"/><text x="692" y="305" fill="#FFFFFF" font-size="14" font-weight="700" text-anchor="middle">2</text>
+      <text x="720" y="307" fill="#1D1D1F" font-size="20">Say yes to the one clear question</text>
+      <circle cx="692" cy="368" r="13" fill="#C35C00"/><text x="692" y="373" fill="#FFFFFF" font-size="14" font-weight="700" text-anchor="middle">3</text>
+      <text x="720" y="375" fill="#1D1D1F" font-size="20">The chat returns as "New Chat"</text>
     </g>
-    <rect x="676" y="452" width="428" height="66" rx="10" fill="#F5F5F7"/>
-    <text x="890" y="479" fill="#C35C00" font-size="15" font-weight="700" text-anchor="middle">The ONLY write this app can ever do</text>
-    <text x="890" y="503" fill="#86868B" font-size="14" text-anchor="middle">Never deletes or changes anything else — you confirm first</text>
+    <text x="890" y="440" fill="#C35C00" font-size="18" font-weight="600" text-anchor="middle">The only write this app can ever do</text>
+
+    <text x="600" y="520" fill="#86868B" font-size="18" text-anchor="middle">You choose. Paste is the safe path; restore puts the chat back on the website.</text>
   </g>
 </svg>

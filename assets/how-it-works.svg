@@ -1,64 +1,54 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-label="How the recovery works under the hood">
-  <rect width="1200" height="640" rx="16" fill="#F5F5F7"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-label="How the app finds your chats">
+  <rect width="1200" height="520" rx="16" fill="#F5F5F7"/>
   <defs>
     <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M0 0 L10 5 L0 10 z" fill="#007AFF"/>
     </marker>
   </defs>
   <g font-family="Segoe UI, system-ui, -apple-system, sans-serif">
-    <text x="600" y="58" fill="#1D1D1F" font-size="30" font-weight="700" text-anchor="middle">How the recovery works</text>
-    <text x="600" y="90" fill="#86868B" font-size="17" text-anchor="middle">Four steps, all read-only — nothing on your account is ever changed</text>
+    <text x="600" y="58" fill="#1D1D1F" font-size="32" font-weight="700" text-anchor="middle">How the app finds your chats</text>
 
-    <!-- step 1 -->
-    <rect x="60" y="130" width="250" height="280" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
-    <circle cx="185" cy="180" r="24" fill="#E5F1FF"/>
-    <text x="185" y="188" fill="#007AFF" font-size="21" font-weight="700" text-anchor="middle">1</text>
-    <text x="185" y="232" fill="#1D1D1F" font-size="20" font-weight="600" text-anchor="middle">Find your sign-in</text>
-    <text x="185" y="266" fill="#86868B" font-size="15" text-anchor="middle">Looks in Chrome, Edge, Brave</text>
-    <text x="185" y="288" fill="#86868B" font-size="15" text-anchor="middle">and Firefox for the sign-in</text>
-    <text x="185" y="310" fill="#86868B" font-size="15" text-anchor="middle">the browser saved for you —</text>
-    <text x="185" y="332" fill="#86868B" font-size="15" text-anchor="middle">and knows the difference</text>
-    <text x="185" y="354" fill="#86868B" font-size="15" text-anchor="middle">between you and a guest</text>
-    <path d="M322 270 h44" stroke="#007AFF" stroke-width="3" marker-end="url(#arr)"/>
+    <g>
+      <rect x="60" y="110" width="250" height="240" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <circle cx="185" cy="162" r="26" fill="#007AFF"/>
+      <text x="185" y="171" fill="#FFFFFF" font-size="24" font-weight="700" text-anchor="middle">1</text>
+      <text x="185" y="216" fill="#1D1D1F" font-size="20" font-weight="600" text-anchor="middle">Find your sign-in</text>
+      <text x="185" y="256" fill="#1D1D1F" font-size="17" text-anchor="middle">The one your browser</text>
+      <text x="185" y="280" fill="#1D1D1F" font-size="17" text-anchor="middle">already saved for you</text>
+    </g>
+    <path d="M322 230 h40" stroke="#007AFF" stroke-width="3" marker-end="url(#arr)"/>
 
-    <!-- step 2 -->
-    <rect x="376" y="130" width="250" height="280" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
-    <circle cx="501" cy="180" r="24" fill="#E8F8EE"/>
-    <text x="501" y="188" fill="#1E8E3E" font-size="21" font-weight="700" text-anchor="middle">2</text>
-    <text x="501" y="232" fill="#1D1D1F" font-size="20" font-weight="600" text-anchor="middle">Count your chats</text>
-    <text x="501" y="266" fill="#86868B" font-size="15" text-anchor="middle">Asks the website for your</text>
-    <text x="501" y="288" fill="#86868B" font-size="15" text-anchor="middle">conversation list — the same</text>
-    <text x="501" y="310" fill="#86868B" font-size="15" text-anchor="middle">list the sidebar forgot</text>
-    <text x="501" y="332" fill="#86868B" font-size="15" text-anchor="middle">how to show. It still works,</text>
-    <text x="501" y="354" fill="#86868B" font-size="15" text-anchor="middle">so your chats come right back</text>
-    <path d="M638 270 h44" stroke="#007AFF" stroke-width="3" marker-end="url(#arr)"/>
+    <g>
+      <rect x="376" y="110" width="250" height="240" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <circle cx="501" cy="162" r="26" fill="#1E8E3E"/>
+      <text x="501" y="171" fill="#FFFFFF" font-size="24" font-weight="700" text-anchor="middle">2</text>
+      <text x="501" y="216" fill="#1D1D1F" font-size="20" font-weight="600" text-anchor="middle">Count your chats</text>
+      <text x="501" y="256" fill="#1D1D1F" font-size="17" text-anchor="middle">The website's list still works —</text>
+      <text x="501" y="280" fill="#1D1D1F" font-size="17" text-anchor="middle">only the sidebar forgot it</text>
+    </g>
+    <path d="M638 230 h40" stroke="#007AFF" stroke-width="3" marker-end="url(#arr)"/>
 
-    <!-- step 3 -->
-    <rect x="692" y="130" width="250" height="280" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
-    <circle cx="817" cy="180" r="24" fill="#FFF3E0"/>
-    <text x="817" y="188" fill="#C35C00" font-size="21" font-weight="700" text-anchor="middle">3</text>
-    <text x="817" y="232" fill="#1D1D1F" font-size="20" font-weight="600" text-anchor="middle">Copy everything</text>
-    <text x="817" y="266" fill="#86868B" font-size="15" text-anchor="middle">Every message, in order,</text>
-    <text x="817" y="288" fill="#86868B" font-size="15" text-anchor="middle">gently and at a polite pace —</text>
-    <text x="817" y="310" fill="#86868B" font-size="15" text-anchor="middle">plus photos and files,</text>
-    <text x="817" y="332" fill="#86868B" font-size="15" text-anchor="middle">kept where they appeared</text>
-    <text x="817" y="354" fill="#86868B" font-size="15" text-anchor="middle">in the conversation</text>
-    <path d="M954 270 h44" stroke="#007AFF" stroke-width="3" marker-end="url(#arr)"/>
+    <g>
+      <rect x="692" y="110" width="250" height="240" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <circle cx="817" cy="162" r="26" fill="#C35C00"/>
+      <text x="817" y="171" fill="#FFFFFF" font-size="24" font-weight="700" text-anchor="middle">3</text>
+      <text x="817" y="216" fill="#1D1D1F" font-size="20" font-weight="600" text-anchor="middle">Copy everything</text>
+      <text x="817" y="256" fill="#1D1D1F" font-size="17" text-anchor="middle">Every message, in order,</text>
+      <text x="817" y="280" fill="#1D1D1F" font-size="17" text-anchor="middle">photos and files too</text>
+    </g>
+    <path d="M954 230 h40" stroke="#007AFF" stroke-width="3" marker-end="url(#arr)"/>
 
-    <!-- step 4 -->
-    <rect x="1010" y="130" width="130" height="280" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
-    <circle cx="1075" cy="180" r="24" fill="#EDE7F6"/>
-    <text x="1075" y="188" fill="#6750A4" font-size="21" font-weight="700" text-anchor="middle">4</text>
-    <text x="1075" y="232" fill="#1D1D1F" font-size="19" font-weight="600" text-anchor="middle">Save</text>
-    <text x="1075" y="266" fill="#86868B" font-size="15" text-anchor="middle">Readable</text>
-    <text x="1075" y="288" fill="#86868B" font-size="15" text-anchor="middle">pages,</text>
-    <text x="1075" y="310" fill="#86868B" font-size="15" text-anchor="middle">safe copies,</text>
-    <text x="1075" y="332" fill="#86868B" font-size="15" text-anchor="middle">the direct links,</text>
-    <text x="1075" y="354" fill="#86868B" font-size="15" text-anchor="middle">an index</text>
+    <g>
+      <rect x="1010" y="110" width="130" height="240" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <circle cx="1075" cy="162" r="26" fill="#6750A4"/>
+      <text x="1075" y="171" fill="#FFFFFF" font-size="24" font-weight="700" text-anchor="middle">4</text>
+      <text x="1075" y="216" fill="#1D1D1F" font-size="20" font-weight="600" text-anchor="middle">Save</text>
+      <text x="1075" y="256" fill="#1D1D1F" font-size="17" text-anchor="middle">to your</text>
+      <text x="1075" y="280" fill="#1D1D1F" font-size="17" text-anchor="middle">computer</text>
+    </g>
 
-    <rect x="60" y="450" width="1080" height="130" rx="14" fill="#E5F1FF"/>
-    <text x="600" y="494" fill="#1D1D1F" font-size="19" font-weight="600" text-anchor="middle">Why this is possible: an empty sidebar is a display problem on the website,</text>
-    <text x="600" y="522" fill="#86868B" font-size="16" text-anchor="middle">not lost data. The conversations stay on the servers, and each one keeps opening by its</text>
-    <text x="600" y="546" fill="#86868B" font-size="16" text-anchor="middle">direct link — chat.z.ai/c/&lt;chat-id&gt; — which is exactly what this tool collects for you.</text>
+    <rect x="60" y="390" width="1080" height="90" rx="14" fill="#E5F1FF"/>
+    <text x="600" y="428" fill="#1D1D1F" font-size="20" font-weight="600" text-anchor="middle">The app only reads. It cannot delete or change anything on your account.</text>
+    <text x="600" y="458" fill="#86868B" font-size="17" text-anchor="middle">Everything stays on your computer.</text>
   </g>
 </svg>

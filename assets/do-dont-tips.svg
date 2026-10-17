@@ -1,47 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740" role="img" aria-label="What to do and not do when the chat list goes empty">
-  <rect width="1200" height="740" rx="16" fill="#F5F5F7"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-label="What to do and not do when the chat list goes empty">
+  <rect width="1200" height="620" rx="16" fill="#F5F5F7"/>
   <g font-family="Segoe UI, system-ui, -apple-system, sans-serif">
-    <text x="600" y="58" fill="#1D1D1F" font-size="30" font-weight="700" text-anchor="middle">If the list goes empty</text>
-    <text x="600" y="90" fill="#34C759" font-size="20" font-weight="600" text-anchor="middle">Your chats are almost never gone.</text>
+    <text x="600" y="60" fill="#1D1D1F" font-size="32" font-weight="700" text-anchor="middle">If the list goes empty</text>
+    <text x="600" y="96" fill="#1E8E3E" font-size="22" font-weight="600" text-anchor="middle">Your chats are almost never gone.</text>
 
-    <!-- DO column -->
-    <rect x="60" y="120" width="530" height="540" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
-    <rect x="60" y="120" width="530" height="54" rx="14" fill="#E8F8EE"/>
-    <text x="325" y="155" fill="#1E8E3E" font-size="21" font-weight="700" text-anchor="middle">DO</text>
-    <g fill="#1D1D1F" font-size="17">
-      <circle cx="104" cy="212" r="12" fill="#34C759"/><path d="M99 212 l4 4 7 -8" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <text x="130" y="218">Save your chat links first. They still open.</text>
-      <circle cx="104" cy="276" r="12" fill="#34C759"/><path d="M99 276 l4 4 7 -8" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <text x="130" y="282">Press "Save all my chats". Keep a copy.</text>
-      <circle cx="104" cy="340" r="12" fill="#34C759"/><path d="M99 340 l4 4 7 -8" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <text x="130" y="346">Use the same login every time.</text>
-      <circle cx="104" cy="404" r="12" fill="#34C759"/><path d="M99 404 l4 4 7 -8" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <text x="130" y="410">Check the email on the website.</text>
-      <circle cx="104" cy="468" r="12" fill="#34C759"/><path d="M99 468 l4 4 7 -8" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <text x="130" y="474">Right account? Then relax.</text>
+    <rect x="60" y="130" width="530" height="400" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+    <rect x="60" y="130" width="530" height="56" rx="14" fill="#E8F8EE"/>
+    <text x="325" y="166" fill="#1E8E3E" font-size="23" font-weight="700" text-anchor="middle">DO</text>
+    <g>
+      <circle cx="112" cy="226" r="13" fill="#34C759"/><path d="M106 226 l4 4 8 -9" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <text x="140" y="233" fill="#1D1D1F" font-size="20">Save your chats first</text>
+      <circle cx="112" cy="296" r="13" fill="#34C759"/><path d="M106 296 l4 4 8 -9" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <text x="140" y="303" fill="#1D1D1F" font-size="20">Your chat links still work</text>
+      <circle cx="112" cy="366" r="13" fill="#34C759"/><path d="M106 366 l4 4 8 -9" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <text x="140" y="373" fill="#1D1D1F" font-size="20">Use the same login always</text>
+      <circle cx="112" cy="436" r="13" fill="#34C759"/><path d="M106 436 l4 4 8 -9" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <text x="140" y="443" fill="#1D1D1F" font-size="20">Check the email on the site</text>
     </g>
-    <text x="325" y="560" fill="#86868B" font-size="15" text-anchor="middle">The links look like chat.z.ai/c/…</text>
-    <text x="325" y="584" fill="#86868B" font-size="15" text-anchor="middle">They work even while the list is empty.</text>
 
-    <!-- DON'T column -->
-    <rect x="610" y="120" width="530" height="540" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
-    <rect x="610" y="120" width="530" height="54" rx="14" fill="#FDECEC"/>
-    <text x="875" y="155" fill="#D70015" font-size="21" font-weight="700" text-anchor="middle">DON'T</text>
-    <g fill="#1D1D1F" font-size="17">
-      <circle cx="654" cy="212" r="12" fill="#D70015"/><path d="M649 207 l10 10 M659 207 l-10 10" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
-      <text x="680" y="218">Don't log out yet.</text>
-      <circle cx="654" cy="276" r="12" fill="#D70015"/><path d="M649 271 l10 10 M659 271 l-10 10" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
-      <text x="680" y="282">Don't clear cookies or site data.</text>
-      <circle cx="654" cy="340" r="12" fill="#D70015"/><path d="M649 335 l10 10 M659 335 l-10 10" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
-      <text x="680" y="346">Don't delete your chats in a panic.</text>
-      <circle cx="654" cy="404" r="12" fill="#D70015"/><path d="M649 399 l10 10 M659 399 l-10 10" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
-      <text x="680" y="410">Don't keep chatting as a guest.</text>
-      <circle cx="654" cy="468" r="12" fill="#D70015"/><path d="M649 463 l10 10 M659 463 l-10 10" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
-      <text x="680" y="474">Don't run cleaning apps yet.</text>
+    <rect x="610" y="130" width="530" height="400" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+    <rect x="610" y="130" width="530" height="56" rx="14" fill="#FDECEC"/>
+    <text x="875" y="166" fill="#D70015" font-size="23" font-weight="700" text-anchor="middle">DON'T</text>
+    <g>
+      <circle cx="662" cy="226" r="13" fill="#D70015"/><path d="M656 220 l12 12 M668 220 l-12 12" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+      <text x="690" y="233" fill="#1D1D1F" font-size="20">Don't log out yet</text>
+      <circle cx="662" cy="296" r="13" fill="#D70015"/><path d="M656 290 l12 12 M668 290 l-12 12" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+      <text x="690" y="303" fill="#1D1D1F" font-size="20">Don't clear anything</text>
+      <circle cx="662" cy="366" r="13" fill="#D70015"/><path d="M656 360 l12 12 M668 360 l-12 12" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+      <text x="690" y="373" fill="#1D1D1F" font-size="20">Don't delete chats in a panic</text>
+      <circle cx="662" cy="436" r="13" fill="#D70015"/><path d="M656 430 l12 12 M668 430 l-12 12" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+      <text x="690" y="443" fill="#1D1D1F" font-size="20">Don't use cleaning apps yet</text>
     </g>
-    <text x="875" y="560" fill="#86868B" font-size="15" text-anchor="middle">Guest chats are not saved to your account.</text>
-    <text x="875" y="584" fill="#86868B" font-size="15" text-anchor="middle">Cleaning apps can erase the saved sign-in.</text>
 
-    <text x="600" y="706" fill="#86868B" font-size="15" text-anchor="middle">Save first, fix later — that's how a small website problem stays small.</text>
+    <text x="600" y="580" fill="#86868B" font-size="18" text-anchor="middle">Save first, fix later — that keeps a small website problem small.</text>
   </g>
 </svg>

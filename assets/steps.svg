@@ -1,50 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-label="Three simple steps">
-  <rect width="1200" height="560" rx="16" fill="#F5F5F7"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="540" viewBox="0 0 1200 540" role="img" aria-label="Three simple steps">
+  <rect width="1200" height="540" rx="16" fill="#F5F5F7"/>
   <g font-family="Segoe UI, system-ui, -apple-system, sans-serif">
-    <text x="600" y="58" fill="#1D1D1F" font-size="30" font-weight="700" text-anchor="middle">Three steps. Two buttons.</text>
+    <text x="600" y="64" fill="#1D1D1F" font-size="34" font-weight="700" text-anchor="middle">Three steps. Two buttons.</text>
 
     <g>
-      <rect x="60" y="100" width="340" height="300" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
-      <circle cx="130" cy="160" r="26" fill="#007AFF"/>
-      <text x="130" y="169" fill="#FFFFFF" font-size="24" font-weight="700" text-anchor="middle">1</text>
-      <text x="230" y="168" fill="#1D1D1F" font-size="19" font-weight="600" text-anchor="middle">Download &amp; open</text>
-      <text x="230" y="192" fill="#86868B" font-size="14" text-anchor="middle">from the Releases page</text>
-      <text x="92" y="240" fill="#1D1D1F" font-size="16">Get the file for your computer,</text>
-      <text x="92" y="264" fill="#1D1D1F" font-size="16">unzip it, and open the app.</text>
-      <text x="92" y="300" fill="#86868B" font-size="14">Mac asks one time if it's okay</text>
-      <text x="92" y="318" fill="#86868B" font-size="14">to open — you say yes once.</text>
+      <rect x="60" y="110" width="340" height="290" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <circle cx="230" cy="170" r="28" fill="#007AFF"/>
+      <text x="230" y="180" fill="#FFFFFF" font-size="26" font-weight="700" text-anchor="middle">1</text>
+      <text x="230" y="238" fill="#1D1D1F" font-size="22" font-weight="600" text-anchor="middle">Download and open</text>
+      <text x="230" y="286" fill="#1D1D1F" font-size="18" text-anchor="middle">Get the file for your computer</text>
+      <text x="230" y="312" fill="#1D1D1F" font-size="18" text-anchor="middle">and open the app.</text>
     </g>
-    <path d="M412 250 h36" stroke="#007AFF" stroke-width="3"/>
 
     <g>
-      <rect x="460" y="100" width="340" height="300" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
-      <circle cx="530" cy="160" r="26" fill="#007AFF"/>
-      <text x="530" y="169" fill="#FFFFFF" font-size="24" font-weight="700" text-anchor="middle">2</text>
-      <text x="638" y="160" fill="#1D1D1F" font-size="19" font-weight="600" text-anchor="middle">"Check my chats"</text>
-      <rect x="560" y="176" width="156" height="30" rx="15" fill="#E5F1FF"/>
-      <text x="638" y="196" fill="#007AFF" font-size="13" text-anchor="middle">read-only check</text>
-      <text x="492" y="240" fill="#1D1D1F" font-size="16">The app looks for your saved</text>
-      <text x="492" y="264" fill="#1D1D1F" font-size="16">sign-in and counts your chats.</text>
-      <text x="492" y="300" fill="#34C759" font-size="15" font-weight="600">"Good news — we can see</text>
-      <text x="492" y="320" fill="#34C759" font-size="15" font-weight="600">your 23 chats."</text>
+      <rect x="460" y="110" width="340" height="290" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <circle cx="630" cy="170" r="28" fill="#007AFF"/>
+      <text x="630" y="180" fill="#FFFFFF" font-size="26" font-weight="700" text-anchor="middle">2</text>
+      <text x="630" y="238" fill="#1D1D1F" font-size="22" font-weight="600" text-anchor="middle">"Check my chats"</text>
+      <text x="630" y="286" fill="#1D1D1F" font-size="18" text-anchor="middle">The app counts your chats</text>
+      <text x="630" y="312" fill="#1D1D1F" font-size="18" text-anchor="middle">and shows you the number.</text>
     </g>
-    <path d="M812 250 h36" stroke="#007AFF" stroke-width="3"/>
 
     <g>
-      <rect x="860" y="100" width="340" height="300" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
-      <circle cx="930" cy="160" r="26" fill="#007AFF"/>
-      <text x="930" y="169" fill="#FFFFFF" font-size="24" font-weight="700" text-anchor="middle">3</text>
-      <text x="1010" y="160" fill="#1D1D1F" font-size="19" font-weight="600" text-anchor="middle">"Save all my chats"</text>
-      <rect x="940" y="176" width="140" height="30" rx="15" fill="#E5F1FF"/>
-      <text x="1010" y="196" fill="#007AFF" font-size="13" text-anchor="middle">copies everything</text>
-      <text x="892" y="240" fill="#1D1D1F" font-size="16">Every conversation is copied</text>
-      <text x="892" y="264" fill="#1D1D1F" font-size="16">to a folder on your computer.</text>
-      <text x="892" y="300" fill="#86868B" font-size="14">Then read them any time with</text>
-      <text x="892" y="318" fill="#86868B" font-size="14">"Read my chats".</text>
+      <rect x="860" y="110" width="340" height="290" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <circle cx="1030" cy="170" r="28" fill="#007AFF"/>
+      <text x="1030" y="180" fill="#FFFFFF" font-size="26" font-weight="700" text-anchor="middle">3</text>
+      <text x="1030" y="238" fill="#1D1D1F" font-size="22" font-weight="600" text-anchor="middle">"Save all my chats"</text>
+      <text x="1030" y="286" fill="#1D1D1F" font-size="18" text-anchor="middle">Everything is copied</text>
+      <text x="1030" y="312" fill="#1D1D1F" font-size="18" text-anchor="middle">to your computer.</text>
     </g>
 
-    <rect x="60" y="432" width="1140" height="80" rx="14" fill="#E5F1FF"/>
-    <text x="630" y="466" fill="#1D1D1F" font-size="18" font-weight="600" text-anchor="middle">An empty list is almost never lost chats — it's the website forgetting how to show them.</text>
-    <text x="630" y="492" fill="#86868B" font-size="15" text-anchor="middle">This app proves your chats are still there before you change anything.</text>
+    <rect x="60" y="432" width="1140" height="70" rx="14" fill="#E8F8EE"/>
+    <text x="630" y="475" fill="#1E8E3E" font-size="21" font-weight="600" text-anchor="middle">An empty list almost never means lost chats. The website just stopped showing them.</text>
   </g>
 </svg>

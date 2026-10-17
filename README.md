@@ -58,7 +58,7 @@ The short version: **save first, don't fix later.** Don't log out, don't clear a
 
 ![Viewer](assets/viewer.svg)
 
-Click **"Read my chats"** and the app shows every conversation in a clean list — search, click, and read, with the assistant's reasoning kept out of the way, web searches noted, and any photos or files shown right where they appeared. Every chat also has an **"Open on chat.z.ai"** button and works with backups you saved earlier, including ones made by the Python tool.
+Click **"Read my chats"** and the app shows every conversation in a clean list. Search by name, click one, and read it like a chat — with any photos or files shown right where they appeared, and a button to open the same chat on the website. It also reads backups you saved earlier, including ones made by the Python tool.
 
 ## Bringing a chat back
 
@@ -66,8 +66,8 @@ Click **"Read my chats"** and the app shows every conversation in a clean list �
 
 Two buttons, your choice:
 
-- **Continue by paste** — copies the whole conversation so you can paste it into a new chat and keep going. Nothing is written to your account.
-- **Restore to my account…** — recreates the conversation as a new chat in your account (it appears as "New Chat"; rename it after opening). This is the **only** thing this app can ever write to your account, it happens only after you say yes to a clear explanation, and it never deletes or changes anything else.
+- **Continue by paste** — copies the whole conversation so you can paste it into a new chat and keep going. Nothing is written to your account. This is the safe path.
+- **Restore to my account…** — puts the chat back on the website as a new conversation (it appears as "New Chat"; rename it after opening). This is the **only** thing this app can ever write to your account — it happens only after you say yes to one clear question, and it never deletes or changes anything else.
 
 ## Common questions
 

@@ -1,61 +1,48 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-label="Reading saved chats in the app">
-  <rect width="1200" height="620" rx="16" fill="#F5F5F7"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-label="Read your saved chats in the app">
+  <rect width="1200" height="560" rx="16" fill="#F5F5F7"/>
   <g font-family="Segoe UI, system-ui, -apple-system, sans-serif">
-    <text x="600" y="58" fill="#1D1D1F" font-size="30" font-weight="700" text-anchor="middle">Read your saved chats — right in the app</text>
-    <text x="600" y="90" fill="#86868B" font-size="17" text-anchor="middle">Click "Read my chats". No files to dig through.</text>
+    <text x="600" y="60" fill="#1D1D1F" font-size="32" font-weight="700" text-anchor="middle">Read your chats — right in the app</text>
+    <text x="600" y="94" fill="#86868B" font-size="18" text-anchor="middle">Click "Read my chats". No files to dig through.</text>
 
-    <!-- mock reader window -->
-    <rect x="90" y="120" width="640" height="440" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
-    <rect x="90" y="120" width="640" height="40" rx="14" fill="#F5F5F7"/>
-    <circle cx="116" cy="140" r="6" fill="#D70015"/><circle cx="136" cy="140" r="6" fill="#C35C00"/><circle cx="156" cy="140" r="6" fill="#34C759"/>
-    <text x="410" y="146" fill="#86868B" font-size="13" text-anchor="middle">Your recovered chats (23)</text>
-    <!-- left list -->
-    <rect x="106" y="174" width="200" height="372" rx="10" fill="#F5F5F7"/>
-    <rect x="114" y="182" width="184" height="46" rx="8" fill="#E5F1FF"/>
-    <text x="124" y="201" fill="#1D1D1F" font-size="12" font-weight="600">Assessing Home Warranty…</text>
-    <text x="124" y="218" fill="#86868B" font-size="10">7 messages · Oct 16</text>
-    <text x="124" y="253" fill="#1D1D1F" font-size="12">Missing Chats Inquiry</text>
-    <text x="124" y="268" fill="#86868B" font-size="10">5 messages · Oct 16</text>
-    <text x="124" y="299" fill="#1D1D1F" font-size="12">Efficient OCR for PDF…</text>
-    <text x="124" y="314" fill="#86868B" font-size="10">2 messages · Oct 16</text>
-    <text x="124" y="345" fill="#1D1D1F" font-size="12">foia, cpra : cbp, ice…</text>
-    <text x="124" y="360" fill="#86868B" font-size="10">14 messages · Oct 14</text>
-    <!-- right transcript -->
-    <rect x="322" y="182" width="392" height="52" rx="12" fill="#E5F1FF"/>
-    <text x="338" y="204" fill="#007AFF" font-size="11" font-weight="700">USER · Oct 16</text>
-    <text x="338" y="222" fill="#1D1D1F" font-size="12">What does my home warranty cover?</text>
-    <rect x="322" y="246" width="392" height="120" rx="12" fill="#FFFFFF" stroke="#E5E5EA"/>
-    <text x="338" y="268" fill="#86868B" font-size="11" font-weight="700">ASSISTANT · Oct 16</text>
-    <text x="338" y="286" fill="#86868B" font-size="11">▸ assistant's thinking (collapsed)</text>
-    <text x="338" y="304" fill="#1D1D1F" font-size="12">Typical home warranty plans cover…</text>
-    <text x="338" y="322" fill="#1D1D1F" font-size="12">Mechanical systems and appliances…</text>
-    <text x="338" y="340" fill="#86868B" font-size="11">🔧 used: search</text>
-    <rect x="322" y="378" width="392" height="52" rx="12" fill="#E5F1FF"/>
-    <text x="338" y="400" fill="#007AFF" font-size="11" font-weight="700">USER · Oct 16</text>
-    <text x="338" y="418" fill="#1D1D1F" font-size="12">The claim was denied — what now?</text>
-    <rect x="322" y="440" width="392" height="88" rx="12" fill="#FFFFFF" stroke="#E5E5EA"/>
-    <rect x="338" y="452" width="120" height="40" rx="8" fill="#F5F5F7"/>
-    <text x="348" y="470" fill="#1D1D1F" font-size="11">📄 denial.pdf</text>
-    <text x="348" y="484" fill="#007AFF" font-size="10">Open · Show in folder</text>
-    <text x="470" y="476" fill="#1D1D1F" font-size="12">Here's how to appeal…</text>
+    <!-- simple mock: list + one conversation -->
+    <rect x="90" y="130" width="700" height="380" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+    <rect x="110" y="150" width="200" height="340" rx="10" fill="#F5F5F7"/>
+    <rect x="122" y="166" width="176" height="52" rx="8" fill="#E5F1FF"/>
+    <text x="134" y="188" fill="#1D1D1F" font-size="15" font-weight="600">Home warranty</text>
+    <text x="134" y="208" fill="#86868B" font-size="13">7 messages</text>
+    <text x="134" y="252" fill="#1D1D1F" font-size="15">Missing Chats Inquiry</text>
+    <text x="134" y="272" fill="#86868B" font-size="13">5 messages</text>
+    <text x="134" y="316" fill="#1D1D1F" font-size="15">OCR for PDF photos</text>
+    <text x="134" y="336" fill="#86868B" font-size="13">2 messages</text>
+    <text x="134" y="380" fill="#1D1D1F" font-size="15">foia, cpra</text>
+    <text x="134" y="400" fill="#86868B" font-size="13">14 messages</text>
 
-    <!-- feature callouts -->
+    <rect x="330" y="166" width="440" height="72" rx="12" fill="#E5F1FF"/>
+    <text x="348" y="192" fill="#007AFF" font-size="13" font-weight="700">YOU · Oct 16</text>
+    <text x="348" y="218" fill="#1D1D1F" font-size="15">The claim was denied — what now?</text>
+    <rect x="330" y="252" width="440" height="120" rx="12" fill="#FFFFFF" stroke="#E5E5EA"/>
+    <text x="348" y="278" fill="#86868B" font-size="13" font-weight="700">GLM · Oct 16</text>
+    <text x="348" y="304" fill="#1D1D1F" font-size="15">Here's how to appeal a denial…</text>
+    <text x="348" y="330" fill="#1D1D1F" font-size="15">Start with the inspection report.</text>
+    <rect x="330" y="386" width="200" height="56" rx="10" fill="#F5F5F7"/>
+    <text x="346" y="410" fill="#1D1D1F" font-size="14">📄 denial.pdf</text>
+    <text x="346" y="430" fill="#007AFF" font-size="13">Open · Show in folder</text>
+
+    <!-- three big callouts -->
     <g>
-      <rect x="770" y="130" width="360" height="96" rx="12" fill="#FFFFFF" stroke="#E5E5EA"/>
-      <text x="792" y="166" fill="#1D1D1F" font-size="16" font-weight="600">🔍 Search all your chats</text>
-      <text x="792" y="192" fill="#86868B" font-size="14">Find any conversation by title, instantly</text>
+      <rect x="830" y="130" width="320" height="110" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <text x="990" y="178" fill="#1D1D1F" font-size="21" font-weight="600" text-anchor="middle">🔍 Search</text>
+      <text x="990" y="210" fill="#86868B" font-size="17" text-anchor="middle">Find any chat by its name</text>
 
-      <rect x="770" y="242" width="360" height="96" rx="12" fill="#FFFFFF" stroke="#E5E5EA"/>
-      <text x="792" y="278" fill="#1D1D1F" font-size="16" font-weight="600">🖼️ Attachments included</text>
-      <text x="792" y="304" fill="#86868B" font-size="14">Photos and files, in order, with Open buttons</text>
+      <rect x="830" y="262" width="320" height="110" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <text x="990" y="310" fill="#1D1D1F" font-size="21" font-weight="600" text-anchor="middle">🖼️ Photos and files</text>
+      <text x="990" y="342" fill="#86868B" font-size="17" text-anchor="middle">Shown where they appeared</text>
 
-      <rect x="770" y="354" width="360" height="96" rx="12" fill="#FFFFFF" stroke="#E5E5EA"/>
-      <text x="792" y="390" fill="#1D1D1F" font-size="16" font-weight="600">🧠 Thinking kept tidy</text>
-      <text x="792" y="416" fill="#86868B" font-size="14">Reasoning collapsed; web-search shown as a chip</text>
-
-      <rect x="770" y="466" width="360" height="96" rx="12" fill="#FFFFFF" stroke="#E5E5EA"/>
-      <text x="792" y="502" fill="#1D1D1F" font-size="16" font-weight="600">🔗 One click to the website</text>
-      <text x="792" y="528" fill="#86868B" font-size="14">Every chat links to its live page on chat.z.ai</text>
+      <rect x="830" y="394" width="320" height="110" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <text x="990" y="442" fill="#1D1D1F" font-size="21" font-weight="600" text-anchor="middle">🔗 One click away</text>
+      <text x="990" y="474" fill="#86868B" font-size="17" text-anchor="middle">Opens the chat on the website</text>
     </g>
+
+    <text x="600" y="540" fill="#86868B" font-size="18" text-anchor="middle">Your saved chats, readable any time — even if the website's list is still empty.</text>
   </g>
 </svg>
