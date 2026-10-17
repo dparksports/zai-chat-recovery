@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- SPDX-License-Identifier: Apache-2.0 · Copyright 2026 Z.ai Chat Recovery contributors -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>ZaiChatRecovery</AssemblyName>
+    <RootNamespace>ZaiChatRecovery.Desktop</RootNamespace>
+    <Version>1.1.0</Version>
+    <Product>Z.ai Chat Recovery</Product>
+    <Description>Recover chat.z.ai conversations when the sidebar shows empty. Read-only. Windows/macOS/Linux.</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.2" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.2" />
+  </ItemGroup>
+
+</Project>

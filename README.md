@@ -42,12 +42,25 @@ Options: `--out DIR` (output folder), `--limit N` (quick test),
 `--token eyJ…` (manual token — F12 → Application → Local Storage →
 `https://chat.z.ai` → key `token`).
 
-### 2. Windows app (no Python needed)
+### 2. Desktop app — Windows, macOS, Linux
 
-Download **`ZaiChatRecovery-windows-x64.zip`** from the
-[Releases](../../releases) page, unzip, run `ZaiChatRecovery.exe`
-(.NET 10 self-contained — nothing else to install). Same engine, plus a
-point-and-click flow and a built-in **"Protect your session IDs"** panel.
+Grab the archive for your platform from [Releases](../../releases):
+
+| File | Platform |
+|---|---|
+| `ZaiChatRecovery-windows-x64.zip` | Windows 10/11 (64-bit) |
+| `ZaiChatRecovery-mac-arm64.zip` | macOS 12+ (Apple Silicon) |
+| `ZaiChatRecovery-mac-x64.zip` | macOS 12+ (Intel) |
+| `ZaiChatRecovery-linux-x64.tar.gz` | Linux x64 (self-contained, includes a `.desktop` file) |
+
+Unzip and run `ZaiChatRecovery` (on macOS: right-click → **Open** the first
+time — the build is ad-hoc signed). .NET is bundled, nothing to install.
+Two buttons: **Check my chats** — a diagnosis that shows how many
+conversations are visible on your account before anything is saved — and
+**Save all my chats**. Built-in **"Protect your session IDs"** tips panel.
+Scans Chrome, Edge, Brave, Chromium (including snap) *and Firefox* on all
+three operating systems. The v1.0.0 Windows/WinForms app is superseded by
+this one (source kept under `windows-app/` for reference).
 
 ![How it works](assets/how-it-works.svg)
 
@@ -82,8 +95,10 @@ so save the URLs and back up before you log out, clear anything, or run a
 
 ```
 recover_zai_chats.py    # single-file cross-platform CLI (stdlib only)
-windows-app/            # C# WinForms app (same engine + tips panel)
+desktop-app/            # Avalonia app: Windows + macOS + Linux, one codebase
+windows-app/            # v1.0.0 WinForms app (superseded, kept for reference)
 assets/                 # infographics (SVG)
+.github/workflows/      # CI: builds win/mac/linux binaries on native runners
 LICENSE                 # Apache License 2.0
 ```
 

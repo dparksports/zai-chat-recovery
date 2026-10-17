@@ -1,0 +1,117 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Z.ai Chat Recovery contributors
+# Builds the desktop app for Windows, macOS (arm64 + x64) and Linux on their
+# native runners and attaches the zips to the GitHub release for the tag.
+name: build-release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to attach assets to (must exist)"
+        required: true
+        default: "v1.1.0"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet publish desktop-app -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o publish
+      - shell: pwsh
+        run: Compress-Archive -Path publish/ZaiChatRecovery.exe -DestinationPath ZaiChatRecovery-windows-x64.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: ZaiChatRecovery-windows-x64.zip
+
+  macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        rid: [osx-arm64, osx-x64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet publish desktop-app -c Release -r ${{ matrix.rid }} --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o publish
+      - name: bundle .app and zip
+        run: |
+          RID="${{ matrix.rid }}"
+          SUFFIX=$([ "$RID" = "osx-arm64" ] && echo "mac-arm64" || echo "mac-x64")
+          mkdir -p "ZaiChatRecovery.app/Contents/MacOS"
+          cp publish/ZaiChatRecovery "ZaiChatRecovery.app/Contents/MacOS/ZaiChatRecovery"
+          chmod +x "ZaiChatRecovery.app/Contents/MacOS/ZaiChatRecovery"
+          cat > "ZaiChatRecovery.app/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key><string>ZaiChatRecovery</string>
+            <key>CFBundleIdentifier</key><string>org.dpark.zai-chat-recovery</string>
+            <key>CFBundleName</key><string>Z.ai Chat Recovery</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>1.1.0</string>
+            <key>LSMinimumSystemVersion</key><string>11.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          codesign --force --sign - "ZaiChatRecovery.app"
+          ditto -c -k --keepParent "ZaiChatRecovery.app" "ZaiChatRecovery-$SUFFIX.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-${{ matrix.rid }}
+          path: ZaiChatRecovery-mac-*.zip
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet publish desktop-app -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o publish
+      - name: package tarball with .desktop file
+        run: |
+          mkdir -p pkg && cp publish/ZaiChatRecovery pkg/ && chmod +x pkg/ZaiChatRecovery
+          cat > pkg/zai-chat-recovery.desktop <<'DESKTOP'
+          [Desktop Entry]
+          Type=Application
+          Name=Z.ai Chat Recovery
+          Comment=Recover chat.z.ai conversations when the sidebar shows empty (read-only)
+          Exec=ZaiChatRecovery
+          Terminal=false
+          Categories=Utility;
+          DESKTOP
+          tar czf ZaiChatRecovery-linux-x64.tar.gz -C pkg ZaiChatRecovery zai-chat-recovery.desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-tar
+          path: ZaiChatRecovery-linux-x64.tar.gz
+
+  attach:
+    needs: [windows, macos, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: attach to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then TAG="$GITHUB_REF_NAME"; else TAG="${{ inputs.release_tag }}"; fi
+          echo "attaching $(ls dist | tr '\n' ' ') to $TAG"
+          gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY" \
+            || gh release create "$TAG" --generate-notes --repo "$GITHUB_REPOSITORY" dist/*

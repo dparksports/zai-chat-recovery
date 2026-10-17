@@ -7,4 +7,7 @@ __pycache__/
 windows-app/bin/
 windows-app/obj/
 windows-app/publish/
+desktop-app/bin/
+desktop-app/obj/
+desktop-app/publish/
 dist/

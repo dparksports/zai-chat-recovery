@@ -83,11 +83,12 @@ def browser_roots():
             (home + "/Library/Application Support/BraveSoftware/Brave-Browser", "Brave"),
         ]
     else:
-        cands = [
+        cands += [
             (home + "/.config/google-chrome", "Chrome"),
             (home + "/.config/chromium", "Chromium"),
             (home + "/.config/microsoft-edge", "Edge"),
             (home + "/.config/BraveSoftware/Brave-Browser", "Brave"),
+            (home + "/snap/chromium/common/chromium", "Chromium (snap)"),
         ]
     return [(p, n) for p, n in cands if os.path.isdir(p)]
 
@@ -133,6 +134,33 @@ def find_token_candidates():
                         "mtime": os.path.getmtime(f), "pos": pos, "token": tok,
                         "email": email, "where": f"{name}/{profile}/{base}",
                     })
+    # Firefox keeps site localStorage in webappsstore.sqlite (unencrypted)
+    for profiles_root in (
+        os.path.join(os.environ.get("APPDATA", ""), "Mozilla", "Firefox", "Profiles"),
+        os.path.expanduser("~/Library/Application Support/Firefox/Profiles"),
+        os.path.expanduser("~/.mozilla/firefox"),
+    ):
+        if not os.path.isdir(profiles_root):
+            continue
+        for prof in os.listdir(profiles_root):
+            db = os.path.join(profiles_root, prof, "webappsstore.sqlite")
+            if not os.path.isfile(db):
+                continue
+            try:
+                data = open(db, "rb").read()
+            except OSError:
+                continue
+            hits = set()
+            for blob in (data.decode("ascii", "ignore"), data.decode("utf-16le", "ignore")):
+                hits |= {(m.start(), m.group()) for m in JWT_RE.finditer(blob)}
+            for pos, tok in hits:
+                email = jwt_email(tok)
+                if email == "unknown":
+                    continue
+                found.append({
+                    "mtime": os.path.getmtime(db), "pos": pos, "token": tok,
+                    "email": email, "where": f"Firefox/{prof}/webappsstore.sqlite",
+                })
     found.sort(key=lambda c: (c["email"].startswith("guest-"),
                              -c["mtime"], -c["pos"]))
     dedup, out = set(), []
