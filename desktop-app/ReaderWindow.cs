@@ -28,6 +28,8 @@ internal sealed class ReaderWindow : Window
     private readonly TextBox _search = new() { Watermark = "Search chats…" };
     private readonly TextBlock _chatTitle = new() { FontSize = 18, FontWeight = FontWeight.Bold, Foreground = new SolidColorBrush(Text), TextWrapping = TextWrapping.Wrap };
     private readonly Button _openWeb = new() { Content = "Open on chat.z.ai", Padding = new(12, 6), IsEnabled = false };
+    private readonly Button _fetchBtn = new() { Content = "Fetch attachments", Padding = new(12, 6) };
+    private readonly TextBlock _status = new() { FontSize = 11, Foreground = new SolidColorBrush(Muted), TextWrapping = TextWrapping.Wrap };
     private readonly StackPanel _msgs = new() { Spacing = 10 };
     private readonly ScrollViewer _scroller = new();
 
@@ -56,6 +58,8 @@ internal sealed class ReaderWindow : Window
             Foreground = new SolidColorBrush(Muted), TextWrapping = TextWrapping.Wrap
         };
         _search.TextChanged += (_, _) => RefreshList();
+
+        _fetchBtn.Click += async (_, _) => await FetchCurrentAsync();
 
         var titleHost = new ContentControl { Content = _chatTitle, HorizontalAlignment = HorizontalAlignment.Stretch };
         _openWeb.Click += (_, _) =>
@@ -107,11 +111,14 @@ internal sealed class ReaderWindow : Window
         Grid.SetColumn(left, 0);
         body.Children.Add(right);
         Grid.SetColumn(right, 1);
-        var topGrid = new Grid { ColumnDefinitions = new("*, 180"), Margin = new(0, 8, 0, 0) };
+        var topGrid = new Grid { ColumnDefinitions = new("*, 165, 165"), Margin = new(0, 8, 0, 0) };
         topGrid.Children.Add(titleHost);
         _openWeb.VerticalAlignment = VerticalAlignment.Center;
         topGrid.Children.Add(_openWeb);
         Grid.SetColumn(_openWeb, 1);
+        _fetchBtn.VerticalAlignment = VerticalAlignment.Center;
+        topGrid.Children.Add(_fetchBtn);
+        Grid.SetColumn(_fetchBtn, 2);
 
         // Grid (not StackPanel) so the body gets bounded height - a StackPanel
         // gives infinite height, which makes the ScrollViewer size to content
@@ -126,8 +133,12 @@ internal sealed class ReaderWindow : Window
         Grid.SetRow(_search, 2);
         root.Children.Add(topGrid);
         Grid.SetRow(topGrid, 3);
+        root.Children.Add(_status);
+        _status.Margin = new(0, 4, 0, 0);
+        Grid.SetRow(_status, 4);
         root.Children.Add(body);
-        Grid.SetRow(body, 4);
+        Grid.SetRow(body, 5);
+        root.RowDefinitions = new("Auto,Auto,Auto,Auto,Auto,*");
         Content = root;
         RefreshList();
         if (_all.Count > 0) _list.SelectedIndex = 0;
@@ -223,8 +234,126 @@ internal sealed class ReaderWindow : Window
                 });
             }
         }
+        if (v.Tools.Length > 0)
+            inner.Children.Add(new TextBlock
+            {
+                Text = "🔧 used: " + v.Tools, FontSize = 11,
+                Foreground = new SolidColorBrush(Muted)
+            });
+        foreach (var a in v.Attachments)
+        {
+            if (a.Missing || a.Path is null)
+                inner.Children.Add(new TextBlock
+                {
+                    Text = "(attachment not saved: " + a.Name + ")", FontSize = 11,
+                    Foreground = new SolidColorBrush(Muted), FontStyle = FontStyle.Italic
+                });
+            else
+                inner.Children.Add(AttachmentCard(a));
+        }
         card.Child = inner;
         return card;
+    }
+
+    private Control AttachmentCard(AttachmentView a)
+    {
+        var full = Path.Combine(_dir, a.Path!.Replace('/', Path.DirectorySeparatorChar));
+        if (a.Kind == "image")
+        {
+            try
+            {
+                return new Image
+                {
+                    Source = new Avalonia.Media.Imaging.Bitmap(full),
+                    MaxWidth = 380, Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                };
+            }
+            catch { /* fall through to file card */ }
+        }
+        var card = new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#F5F5F7")),
+            BorderBrush = new SolidColorBrush(PanelBorder),
+            BorderThickness = new(1), CornerRadius = new CornerRadius(8),
+            Padding = new(10, 6), MaxWidth = 480,
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+        row.Children.Add(new TextBlock
+        {
+            Text = (a.Kind == "audio" ? "🎵 " : "📄 ") + a.Name +
+                   (a.Size > 0 ? $"  ({a.Size / 1024.0 / 1024.0:0.#} MB)" : ""),
+            FontSize = 12, VerticalAlignment = VerticalAlignment.Center,
+            Foreground = new SolidColorBrush(Text)
+        });
+        var open = new Button { Content = "Open", Padding = new(10, 3), FontSize = 11 };
+        open.Click += (_, _) => TryOpen(full, false);
+        var show = new Button { Content = "Show in folder", Padding = new(10, 3), FontSize = 11 };
+        show.Click += (_, _) => TryOpen(full, true);
+        row.Children.Add(open);
+        row.Children.Add(show);
+        card.Child = row;
+        return card;
+    }
+
+    private static void TryOpen(string full, bool reveal)
+    {
+        try
+        {
+            if (!File.Exists(full)) return;
+            if (OperatingSystem.IsWindows())
+            {
+                System.Diagnostics.Process.Start("explorer.exe",
+                    reveal ? $"/select,\"{full}\"" : full);
+            }
+            else if (OperatingSystem.IsMacOS())
+                System.Diagnostics.Process.Start("open", reveal ? $"-R {full}" : full);
+            else
+                System.Diagnostics.Process.Start("xdg-open",
+                    reveal ? Path.GetDirectoryName(full) ?? full : full);
+        }
+        catch { }
+    }
+
+    private async Task FetchCurrentAsync()
+    {
+        if (_current is not { } cur) { _status.Text = "Select a chat first."; return; }
+        _fetchBtn.IsEnabled = false;
+        try
+        {
+            if (Recovery.Token is null)
+            {
+                _status.Text = "Looking for your saved sign-in…";
+                var ok = false;
+                foreach (var c in await Task.Run(Recovery.FindTokenCandidates))
+                {
+                    if (c.Email.StartsWith("guest-", StringComparison.Ordinal)) continue;
+                    if (await Task.Run(() => Recovery.TryUseTokenAsync(c.Token).GetAwaiter().GetResult()))
+                    {
+                        ok = true;
+                        break;
+                    }
+                }
+                if (!ok)
+                {
+                    _status.Text = "No working sign-in - open chat.z.ai in your browser, log in, then try again.";
+                    return;
+                }
+            }
+            _status.Text = "Fetching this chat and its attachments from chat.z.ai…";
+            var (n, att, _) = await Task.Run(() => Recovery.RefetchChatAsync(cur.Id, cur.Title, _dir).GetAwaiter().GetResult());
+            _all.Clear();
+            _all.AddRange(BackupReader.ScanBackupFolder(_dir));
+            RefreshList();
+            var idx = _all.FindIndex(x => x.Id == cur.Id);
+            if (idx >= 0) _list.SelectedIndex = idx;
+            _status.Text = att > 0
+                ? $"Saved {att} attachment(s) - {n} messages refreshed."
+                : $"No attachments on this chat - {n} messages refreshed.";
+        }
+        catch (Exception ex) { _status.Text = "Could not fetch: " + ex.Message; }
+        finally { _fetchBtn.IsEnabled = true; }
     }
 
     private readonly record struct Segment(string Text, bool IsCode);

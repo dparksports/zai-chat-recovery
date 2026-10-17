@@ -93,6 +93,12 @@ internal static class BrowserMatrix
     }
 }
 
+internal sealed record AttachmentExtract(string Kind, string? Url, string? Name);
+
+internal sealed record AttachmentView(string Kind, string? Path, string Name, long Size, bool Missing);
+
+internal sealed record BlockRender(string Vis, string Think, string Tools, List<AttachmentExtract> Attachments);
+
 internal static class Recovery
 {
     private const string Api = "https://chat.z.ai/api/v1";
@@ -289,23 +295,79 @@ internal static class Recovery
 
     internal static string PtTimeMs(long v) => v == 0 ? "" : PtTime(v > 1_000_000_000_000 ? v / 1000 : v);
 
-    internal static (string vis, string think) BlocksToText(JsonElement? blocks)
+    internal sealed record Row(string Role, string Stamp, string Text, string Think, string Tools,
+        List<AttachmentExtract> Attachments)
+    {
+        public List<AttachmentView> Saved { get; } = new();
+    }
+
+    internal static BlockRender RenderBlocks(JsonElement? blocks)
     {
         var vis = new List<string>();
         var think = new List<string>();
+        var tools = new List<string>();
+        var atts = new List<AttachmentExtract>();
         if (blocks is { ValueKind: JsonValueKind.Array } arr)
             foreach (var b in arr.EnumerateArray())
             {
                 if (b.ValueKind != JsonValueKind.Object) continue;
-                string type = b.TryGetProperty("type", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() ?? "" : "";
-                string? txt = null;
-                if (b.TryGetProperty("text", out var x) && x.ValueKind == JsonValueKind.String) txt = x.GetString();
-                else if (b.TryGetProperty("content", out var c) && c.ValueKind == JsonValueKind.String) txt = c.GetString();
-                txt ??= type == "image_url" ? "[image]" : null;
-                if (string.IsNullOrEmpty(txt)) continue;
-                (type == "thinking" ? think : vis).Add(txt);
+                string type = Str(b, "type") ?? "";
+                string? body = Str(b, "text") ?? Str(b, "content");
+                switch (type)
+                {
+                    case "text":
+                        if (!string.IsNullOrEmpty(body)) vis.Add(body!);
+                        break;
+                    case "reasoning":
+                    case "thinking":
+                        if (!string.IsNullOrEmpty(body)) think.Add(body!);
+                        break;
+                    case "tool_calls":
+                        if (b.TryGetProperty("content", out var tc) && tc.ValueKind == JsonValueKind.Array)
+                            foreach (var call in tc.EnumerateArray())
+                            {
+                                var fn = call.TryGetProperty("function", out var f) ? Str(f, "name") : null;
+                                if (fn is { Length: > 0 }) tools.Add(fn);
+                            }
+                        break;
+                    case "image_url":
+                    case "image":
+                        atts.Add(new("image", UrlOf(b, "image_url") ?? UrlOf(b, "url"), Str(b, "name")));
+                        break;
+                    case "file":
+                    case "document":
+                        atts.Add(new("file", UrlOf(b, "file") ?? UrlOf(b, "url"), Str(b, "name") ?? Str(b, "filename")));
+                        break;
+                    case "audio":
+                        atts.Add(new("audio", UrlOf(b, "audio") ?? UrlOf(b, "url"), Str(b, "name")));
+                        break;
+                    default:
+                        if (!string.IsNullOrEmpty(body)) vis.Add(body!);
+                        break;
+                }
             }
-        return (string.Join("\n\n", vis), string.Join("\n\n", think));
+        return new BlockRender(string.Join("\n\n", vis), string.Join("\n\n", think),
+            string.Join("; ", tools.Distinct()), atts);
+
+        static string? UrlOf(JsonElement b, string key)
+        {
+            if (!b.TryGetProperty(key, out var v)) return null;
+            if (v.ValueKind == JsonValueKind.String) return v.GetString();
+            if (v.ValueKind == JsonValueKind.Object && v.TryGetProperty("url", out var u) && u.ValueKind == JsonValueKind.String)
+                return u.GetString();
+            return null;
+        }
+    }
+
+    internal static string? Str(JsonElement o, string k) =>
+        o.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
+    private static string ExtensionOf(string source, string kind)
+    {
+        var ext = Path.GetExtension(new Uri(source, UriKind.RelativeOrAbsolute).GetComponents(UriComponents.Path, UriFormat.Unescaped));
+        if (string.IsNullOrEmpty(ext))
+            ext = kind switch { "image" => ".png", "audio" => ".mp3", _ => ".bin" };
+        return ext.Length > 1 && ext.Length <= 6 ? ext : ".bin";
     }
 
     internal static List<string> Linearize(Dictionary<string, JsonElement> messages)
@@ -334,7 +396,7 @@ internal static class Recovery
     private static string SafeName(string title) =>
         string.Join("_", (title.Length > 50 ? title[..50] : title).Split(Path.GetInvalidFileNameChars())).Trim();
 
-    public static async Task<(string file, int messages)> RenderChatAsync(JsonElement meta, JsonElement detail, string outDir)
+    public static async Task<(string file, int messages, int attachments)> RenderChatAsync(JsonElement meta, JsonElement detail, string outDir)
     {
         string id = meta.GetProperty("id").GetString()!;
         string title = meta.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() ?? "untitled" : "untitled";
@@ -364,7 +426,61 @@ internal static class Recovery
         var order = Linearize(messages);
         string fname = $"{SafeName(title)}__{id[..8]}.md";
         int n = 0;
-        var views = new List<(string role, string stamp, string vis, string think)>();
+        var rows = new List<Row>();
+        foreach (var k in order)
+        {
+            if (!messages.TryGetValue(k, out var m)) continue;
+            string role = m.TryGetProperty("role", out var r2) && r2.ValueKind == JsonValueKind.String ? r2.GetString() ?? "?" : "?";
+            JsonElement? blocks = m.TryGetProperty("content_detail_v", out var cd) ? cd : null;
+            var br = RenderBlocks(blocks);
+            var vis = br.Vis;
+            var think = br.Think;
+            if (vis.Length == 0 && m.TryGetProperty("content", out var c2) && c2.ValueKind == JsonValueKind.String)
+                vis = c2.GetString() ?? "";
+            if (vis.Length == 0 && think.Length == 0 && br.Tools.Length == 0 && br.Attachments.Count == 0) continue;
+            n++;
+            string stamp = m.TryGetProperty("timestamp", out var ts) ? PtTimeMs(ts.GetInt64()) : "";
+            rows.Add(new Row(role.ToUpperInvariant(), stamp, vis, think, br.Tools, br.Attachments));
+        }
+
+        // download attachments now, while the session sign-in is alive
+        int attCount = 0;
+        var attDir = Path.Combine("attachments", id[..8]);
+        int seq = 0;
+        foreach (var row in rows)
+        {
+            foreach (var a in row.Attachments)
+            {
+                seq++;
+                var ext = ExtensionOf(a.Name ?? a.Url ?? "", a.Kind);
+                var fileName = SafeName(a.Name ?? $"attachment{ext}");
+                if (!Path.HasExtension(fileName)) fileName += ext;
+                if (string.IsNullOrWhiteSpace(fileName)) fileName = $"attachment{ext}";
+                if (a.Url is null)
+                {
+                    row.Saved.Add(new AttachmentView(a.Kind, null, fileName, 0, true));
+                    continue;
+                }
+                try
+                {
+                    var rel = $"{attDir.Replace('\\', '/')}/{seq:000}_{fileName}";
+                    var bytes = await ApiDownloadAsync(a.Url, Token!);
+                    if (bytes.Length == 0 || bytes.Length > 200L * 1024 * 1024)
+                        throw new HttpRequestException("empty or oversized download");
+                    Directory.CreateDirectory(Path.Combine(outDir, attDir));
+                    await File.WriteAllBytesAsync(Path.Combine(outDir, rel.Replace('/', Path.DirectorySeparatorChar)), bytes);
+                    row.Saved.Add(new AttachmentView(a.Kind, rel, fileName, bytes.Length, false));
+                    attCount++;
+                }
+                catch (Exception)
+                {
+                    row.Saved.Add(new AttachmentView(a.Kind, null, fileName, 0, true));
+                }
+                await Task.Delay(200);
+            }
+        }
+
+        // markdown
         var sb = new StringBuilder();
         sb.AppendLine($"# {title}").AppendLine();
         sb.AppendLine($"- id: {id}");
@@ -372,43 +488,112 @@ internal static class Recovery
         sb.AppendLine($"- created: {PtTimeMs(meta.TryGetProperty("created_at", out var ca) ? ca.GetInt64() : 0)}");
         sb.AppendLine($"- updated: {PtTimeMs(meta.TryGetProperty("updated_at", out var ua2) ? ua2.GetInt64() : 0)}");
         sb.AppendLine().AppendLine("---").AppendLine();
-        foreach (var k in order)
+        foreach (var row in rows)
         {
-            if (!messages.TryGetValue(k, out var m)) continue;
-            string role = m.TryGetProperty("role", out var r2) && r2.ValueKind == JsonValueKind.String ? r2.GetString() ?? "?" : "?";
-            JsonElement? blocks = m.TryGetProperty("content_detail_v", out var cd) ? cd : null;
-            var (vis, think) = BlocksToText(blocks);
-            if (vis.Length == 0 && m.TryGetProperty("content", out var c2) && c2.ValueKind == JsonValueKind.String)
-                vis = c2.GetString() ?? "";
-            if (vis.Length == 0 && think.Length == 0) continue;
-            n++;
-            string stamp = m.TryGetProperty("timestamp", out var ts) ? PtTimeMs(ts.GetInt64()) : "";
-            views.Add((role.ToUpperInvariant(), stamp, vis, think));
-            sb.AppendLine($"## {role.ToUpper()}{(stamp.Length > 0 ? "  (" + stamp + ")" : "")}").AppendLine();
-            if (think.Length > 0)
-                sb.AppendLine($"<details><summary>thinking</summary>\n\n{think[..Math.Min(4000, think.Length)]}\n\n</details>").AppendLine();
-            if (vis.Length > 0) sb.AppendLine(vis).AppendLine();
+            sb.AppendLine($"## {row.Role}{(row.Stamp.Length > 0 ? "  (" + row.Stamp + ")" : "")}").AppendLine();
+            if (row.Think.Length > 0)
+                sb.AppendLine($"<details><summary>thinking</summary>\n\n{row.Think[..Math.Min(4000, row.Think.Length)]}\n\n</details>").AppendLine();
+            if (row.Tools.Length > 0)
+                sb.AppendLine($"> tools used: {row.Tools}").AppendLine();
+            if (row.Text.Length > 0) sb.AppendLine(row.Text).AppendLine();
+            foreach (var a in row.Saved)
+            {
+                if (a.Missing)
+                    sb.AppendLine($"_(attachment could not be saved: {a.Name})_").AppendLine();
+                else if (a.Kind == "image")
+                    sb.AppendLine($"![{a.Name}]({a.Path?.Replace(" ", "%20")})").AppendLine();
+                else
+                    sb.AppendLine($"[{a.Name}]({a.Path?.Replace(" ", "%20")})").AppendLine();
+            }
         }
         await File.WriteAllTextAsync(Path.Combine(outDir, fname), sb.ToString());
 
-        // enriched <id>.json: same transcript as the .md, structured for the reader
+        // enriched <id>.json: full ordered transcript, structured for the reader
         var arr = new JsonArray();
-        foreach (var (r3, st, v3, th) in views)
-            arr.Add(new JsonObject { ["role"] = r3, ["stamp"] = st, ["text"] = v3, ["thinking"] = th });
+        foreach (var row in rows)
+        {
+            var o = new JsonObject
+            {
+                ["role"] = row.Role,
+                ["stamp"] = row.Stamp,
+                ["text"] = row.Text,
+                ["thinking"] = row.Think,
+                ["tools"] = row.Tools,
+            };
+            if (row.Saved.Count > 0)
+            {
+                var aa = new JsonArray();
+                foreach (var a in row.Saved)
+                    aa.Add(new JsonObject
+                    {
+                        ["kind"] = a.Kind, ["path"] = a.Path, ["name"] = a.Name,
+                        ["size"] = a.Size, ["missing"] = a.Missing,
+                    });
+                o["attachments"] = aa;
+            }
+            arr.Add(o);
+        }
         await File.WriteAllTextAsync(Path.Combine(outDir, $"{id}.json"),
             new JsonObject
             {
-                ["schema"] = "zai-recovery/1",
+                ["schema"] = "zai-recovery/2",
                 ["id"] = id,
                 ["title"] = title,
                 ["updated_at"] = meta.TryGetProperty("updated_at", out var ua3) && ua3.ValueKind == JsonValueKind.Number ? ua3.GetInt64() : 0,
                 ["messages"] = arr,
             }.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
 
-        return (fname, n);
+        return (fname, n, attCount);
     }
 
-    public sealed record RecoverySummary(int Done, int Failed, string OutDir, string MostRecentTitle);
+    /// <summary>Re-fetch one chat from the API and rewrite its backup files in place
+    /// (transcript + attachments). Used by the reader's "Fetch attachments".
+    /// Refuses to overwrite an existing backup when the API returns no message
+    /// content (rate-limited or degraded responses must never destroy data).</summary>
+    public static async Task<(int messages, int attachments, string title)> RefetchChatAsync(string chatId, string title, string outDir)
+    {
+        var meta = new JsonObject { ["id"] = chatId, ["title"] = title };
+        using var doc = JsonDocument.Parse(meta.ToJsonString());
+        var detail = await GetChatDetailAsync(chatId);
+        var treeIds = new List<string>();
+        if (detail.TryGetProperty("chat", out var ch) && ch.TryGetProperty("history", out var h)
+            && h.TryGetProperty("messages", out var ms) && ms.ValueKind == JsonValueKind.Object)
+            treeIds = ms.EnumerateObject().Select(p => p.Name).ToList();
+        if (treeIds.Count > 0)
+        {
+            var probe = await GetMessagesBatchAsync(chatId, treeIds);
+            if (probe.Count == 0)
+                throw new HttpRequestException("the API returned no message content (possibly rate-limited) - existing backup left untouched");
+        }
+        var (_, n, att) = await RenderChatAsync(doc.RootElement.Clone(), detail, outDir);
+        return (n, att, title);
+    }
+
+    public static async Task<byte[]> ApiDownloadAsync(string url, string token)
+    {
+        Uri u = new(url, UriKind.Absolute);
+        for (int hop = 0; hop < 6; hop++)
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, u);
+            req.Headers.Authorization = new("Bearer", token);
+            req.Headers.TryAddWithoutValidation("User-Agent", Ua);
+            using var resp = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+            if ((int)resp.StatusCode is 301 or 302 or 303 or 307 or 308)
+            {
+                var loc = resp.Headers.Location;
+                if (loc is null) break;
+                var next = loc.IsAbsoluteUri ? loc : new Uri(u, loc);
+                if (next.Scheme == "http") next = new UriBuilder(next) { Scheme = "https", Port = 443 }.Uri;
+                u = next;
+                continue;
+            }
+            resp.EnsureSuccessStatusCode();
+            return await resp.Content.ReadAsByteArrayAsync();
+        }
+        throw new HttpRequestException("download failed (redirect loop or no location)");
+    }
+
+    public sealed record RecoverySummary(int Done, int Failed, string OutDir, string MostRecentTitle, int Attachments);
 
     public static async Task<RecoverySummary> RecoverAllAsync(string outDir, int limit,
         Action<string> log, Func<int, int, string, Task> progress)
@@ -420,7 +605,7 @@ internal static class Recovery
         log($"Found {sorted.Count} conversations.");
         var indexLines = new List<string>();
         var urlLines = new List<string>();
-        int done = 0, failed = 0, i = 0;
+        int done = 0, failed = 0, i = 0, totalAtt = 0;
         string mostRecent = "";
         foreach (var c in sorted)
         {
@@ -431,12 +616,13 @@ internal static class Recovery
             try
             {
                 var detail = await GetChatDetailAsync(id);
-                var (fname, n) = await RenderChatAsync(c, detail, outDir);
+                var (fname, n, nAtt) = await RenderChatAsync(c, detail, outDir);
                 done++;
+                totalAtt += nAtt;
                 string upd = PtTimeMs(c.TryGetProperty("updated_at", out var u) ? u.GetInt64() : 0);
                 indexLines.Add($"- [{title}]({fname}) - {n} messages, updated {upd}");
                 urlLines.Add($"| {i} | {title} | {upd} | https://chat.z.ai/c/{id} |");
-                await progress(i, sorted.Count, title);
+                await progress(i, sorted.Count, title + (nAtt > 0 ? $" ({nAtt} attachments)" : ""));
             }
             catch (Exception ex)
             {
@@ -449,7 +635,7 @@ internal static class Recovery
             $"# Recovered z.ai conversations ({done} chats)\n\nAccount: {AccountEmail}\n\n" + string.Join("\n", indexLines) + "\n");
         await File.WriteAllTextAsync(Path.Combine(outDir, "chat-urls.md"),
             "# Direct chat URLs\n\n| # | Title | Updated | URL |\n|---|---|---|---|\n" + string.Join("\n", urlLines) + "\n");
-        return new RecoverySummary(done, failed, outDir, mostRecent);
+        return new RecoverySummary(done, failed, outDir, mostRecent, totalAtt);
     }
 }
 
@@ -459,7 +645,8 @@ internal static class Recovery
 
 internal sealed record ChatSummary(string Id, string Title, string UpdatedText, int Messages, string JsonPath);
 
-internal sealed record MessageView(string Role, string Stamp, string Text, string Thinking);
+internal sealed record MessageView(string Role, string Stamp, string Text, string Thinking, string Tools,
+    List<AttachmentView> Attachments);
 
 internal static class BackupReader
 {
@@ -516,8 +703,18 @@ internal static class BackupReader
                     string stamp = m.TryGetProperty("stamp", out var st) ? st.GetString() ?? "" : "";
                     string text = m.TryGetProperty("text", out var tx) ? tx.GetString() ?? "" : "";
                     string think = m.TryGetProperty("thinking", out var th) ? th.GetString() ?? "" : "";
-                    if (text.Length == 0 && think.Length == 0) continue;
-                    views.Add(new MessageView(role, stamp, text, think));
+                    string tools = m.TryGetProperty("tools", out var tl) ? tl.GetString() ?? "" : "";
+                    var atts = new List<AttachmentView>();
+                    if (m.TryGetProperty("attachments", out var aa) && aa.ValueKind == JsonValueKind.Array)
+                        foreach (var a in aa.EnumerateArray())
+                            atts.Add(new AttachmentView(
+                                Recovery.Str(a, "kind") ?? "file",
+                                Recovery.Str(a, "path"),
+                                Recovery.Str(a, "name") ?? "attachment",
+                                a.TryGetProperty("size", out var sz) && sz.ValueKind == JsonValueKind.Number ? sz.GetInt64() : 0,
+                                a.TryGetProperty("missing", out var mi) && mi.ValueKind == JsonValueKind.True));
+                    if (text.Length == 0 && think.Length == 0 && atts.Count == 0) continue;
+                    views.Add(new MessageView(role, stamp, text, think, tools, atts));
                 }
                 if (views.Count > 0) return views;
             }
@@ -537,11 +734,15 @@ internal static class BackupReader
                     if (m.TryGetProperty("content_detail", out var cd) && cd.ValueKind == JsonValueKind.Object
                         && cd.TryGetProperty("content_blocks", out var cb)) blocks = cb;
                     else if (m.TryGetProperty("content_blocks", out var cb2)) blocks = cb2;
-                    var (vis, think) = Recovery.BlocksToText(blocks);
+                    var br = Recovery.RenderBlocks(blocks);
+                    var vis = br.Vis;
                     if (vis.Length == 0 && m.TryGetProperty("content", out var c2) && c2.ValueKind == JsonValueKind.String)
                         vis = c2.GetString() ?? "";
-                    if (vis.Length == 0 && think.Length == 0) continue;
-                    views.Add(new MessageView(role, stamp, vis, think));
+                    var atts = br.Attachments
+                        .Select(a => new AttachmentView(a.Kind, null, a.Name ?? "attachment", 0, true))
+                        .ToList();
+                    if (vis.Length == 0 && br.Think.Length == 0 && atts.Count == 0) continue;
+                    views.Add(new MessageView(role, stamp, vis, br.Think, br.Tools, atts));
                 }
                 if (views.Count > 0) return views;
             }
@@ -562,9 +763,11 @@ internal static class BackupReader
     public static List<MessageView> ParseMdFile(string path)
     {
         var views = new List<MessageView>();
-        string? role = null, stamp = null;
+        var dir = Path.GetDirectoryName(path) ?? ".";
+        string? role = null, stamp = null, tools = "";
         var body = new StringBuilder();
         var think = new StringBuilder();
+        var atts = new List<AttachmentView>();
         bool inThink = false;
         foreach (var rawLine in File.ReadAllLines(path))
         {
@@ -580,7 +783,19 @@ internal static class BackupReader
                     role = header[..paren].Trim();
                 }
                 else { role = header; stamp = ""; }
-                body.Clear(); think.Clear();
+                body.Clear(); think.Clear(); atts.Clear(); tools = "";
+                continue;
+            }
+            if (line.StartsWith("> tools used: ", StringComparison.OrdinalIgnoreCase))
+            {
+                tools = line["> tools used: ".Length..].Trim();
+                continue;
+            }
+            var link = TryAttachmentLink(line);
+            if (link is { } a)
+            {
+                bool exists = File.Exists(Path.Combine(dir, a.Path?.Replace('/', Path.DirectorySeparatorChar) ?? ""));
+                atts.Add(new AttachmentView(a.Kind, a.Path, a.Name, 0, !exists));
                 continue;
             }
             if (line.StartsWith("<details>", StringComparison.OrdinalIgnoreCase)) { inThink = true; continue; }
@@ -594,9 +809,18 @@ internal static class BackupReader
 
         void Flush()
         {
-            if (role is not null && (body.Length > 0 || think.Length > 0))
-                views.Add(new MessageView(role, stamp ?? "", body.ToString().Trim(), think.ToString().Trim()));
-            body ??= new StringBuilder();
+            if (role is not null && (body.Length > 0 || think.Length > 0 || atts.Count > 0))
+                views.Add(new MessageView(role, stamp ?? "", body.ToString().Trim(), think.ToString().Trim(), tools, atts.ToList()));
+        }
+
+        static (string Kind, string Path, string Name)? TryAttachmentLink(string line)
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(line,
+                @"^(!?)\[([^\]]*)\]\((attachments/[^)\s]+)\)\s*$");
+            if (!m.Success) return null;
+            return (m.Groups[1].Value == "!" ? "image" : "file",
+                    Uri.UnescapeDataString(m.Groups[3].Value),
+                    m.Groups[2].Value.Length > 0 ? m.Groups[2].Value : "attachment");
         }
     }
 }

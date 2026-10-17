@@ -39,9 +39,51 @@ internal static class Program
         if (args.Contains("--selftest", StringComparer.OrdinalIgnoreCase))
             return SelfTest.Run();
         for (int i = 0; i < args.Length - 1; i++)
+        {
             if (args[i].Equals("--open-reader", StringComparison.OrdinalIgnoreCase))
                 ReaderPath = args[i + 1];
+            if (args[i].Equals("--fetch-attachments", StringComparison.OrdinalIgnoreCase))
+                return FetchAttachmentsHeadless(args[i + 1]);
+        }
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
+
+    private static int FetchAttachmentsHeadless(string jsonPath)
+    {
+        var sb = new StringBuilder();
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(jsonPath));
+            var r = doc.RootElement;
+            string id = r.TryGetProperty("id", out var idEl) && idEl.ValueKind == System.Text.Json.JsonValueKind.String
+                ? idEl.GetString()! : Path.GetFileNameWithoutExtension(jsonPath);
+            string title = r.TryGetProperty("title", out var tEl) && tEl.ValueKind == System.Text.Json.JsonValueKind.String
+                ? tEl.GetString() ?? id : id;
+            string dir = Path.GetDirectoryName(Path.GetFullPath(jsonPath)) ?? ".";
+            sb.AppendLine($"chat: {title} ({id})");
+            string? tok = null;
+            foreach (var c in Recovery.FindTokenCandidates())
+            {
+                if (c.Email.StartsWith("guest-", StringComparison.Ordinal)) continue;
+                if (Recovery.TryUseTokenAsync(c.Token).GetAwaiter().GetResult()) { tok = c.Token; break; }
+            }
+            if (tok is null)
+            {
+                sb.AppendLine("result: NO VALID TOKEN");
+                File.WriteAllText(Path.Combine(Path.GetTempPath(), "zai-fetch.txt"), sb.ToString());
+                return 2;
+            }
+            var (n, att, _) = Recovery.RefetchChatAsync(id, title, dir).GetAwaiter().GetResult();
+            sb.AppendLine($"result: OK, {n} messages, {att} attachments saved");
+            File.WriteAllText(Path.Combine(Path.GetTempPath(), "zai-fetch.txt"), sb.ToString());
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine("result: EXCEPTION " + ex.Message);
+            File.WriteAllText(Path.Combine(Path.GetTempPath(), "zai-fetch.txt"), sb.ToString());
+            return 3;
+        }
     }
 
     public static AppBuilder BuildAvaloniaApp()
