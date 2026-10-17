@@ -47,9 +47,9 @@ internal sealed class App : Application
 {
     public App()
     {
-        // Shields Up look and feel: near-black surfaces, iOS-blue accent
+        // Shields Up look and feel, light: gray canvas, white cards, blue accent
         Styles.Add(new FluentTheme());
-        RequestedThemeVariant = ThemeVariant.Dark;
+        RequestedThemeVariant = ThemeVariant.Light;
         Resources["SystemAccentColor"] = Color.Parse("#007AFF");
         Resources["SystemAccentColorLight1"] = Color.Parse("#4098FF");
         Resources["SystemAccentColorLight2"] = Color.Parse("#66AAFF");
@@ -71,17 +71,18 @@ internal sealed class App : Application
 
 internal sealed class MainWindow : Window
 {
-    // Shields Up palette (its Styles/Theme.xaml): #1D1D1F surfaces, #007AFF accent,
-    // #D70015 danger, #86868B muted text
-    private static readonly Color Bg = Color.Parse("#1D1D1F");
-    private static readonly Color Panel = Color.Parse("#2C2C2E");
-    private static readonly Color Text = Color.Parse("#F5F5F7");
+    // Shields Up palette, light theme: #F5F5F7 canvas, white cards, #1D1D1F text,
+    // #007AFF accent, #D70015 danger, #86868B muted
+    private static readonly Color Bg = Color.Parse("#F5F5F7");
+    private static readonly Color Panel = Color.Parse("#FFFFFF");
+    private static readonly Color PanelBorder = Color.Parse("#E5E5EA");
+    private static readonly Color Text = Color.Parse("#1D1D1F");
     private static readonly Color Muted = Color.Parse("#86868B");
     private static readonly Color Cyan = Color.Parse("#007AFF");
-    private static readonly Color Good = Color.Parse("#34C759");
+    private static readonly Color Good = Color.Parse("#1E8E3E");
     private static readonly Color Bad = Color.Parse("#D70015");
 
-    private readonly TextBlock _status = new() { Text = "Click \"Check my chats\" to start — this app can only read, never change anything.", TextWrapping = TextWrapping.Wrap, Foreground = Brushes.White };
+    private readonly TextBlock _status = new() { Text = "Click \"Check my chats\" to start — this app can only read, never change anything.", TextWrapping = TextWrapping.Wrap, Foreground = new SolidColorBrush(Text) };
     private readonly Button _checkBtn = new() { Content = "Check my chats", Padding = new(14, 8) };
     private readonly Button _saveBtn = new() { Content = "Save all my chats", Padding = new(14, 8), IsEnabled = false };
     private readonly Button _openBtn = new() { Content = "Open the folder", Padding = new(14, 8), IsEnabled = false };
@@ -92,18 +93,18 @@ internal sealed class MainWindow : Window
     private bool _autoRescan;
     private bool _busy;
 
+    // Panic-grade copy: short words, one idea per line, big type in the panel
     private static readonly (bool Good, string Tip)[] Tips =
     {
-        (true,  "Save direct chat URLs (chat.z.ai/c/<id>) first - they open even while the sidebar is empty"),
-        (true,  "Back up transcripts + JSON with this app before touching browser settings"),
-        (true,  "Log in with the same method every time (Google vs email can be different accounts)"),
-        (true,  "Check the account email in Settings while you are logged in"),
-        (true,  "Hard-reload or re-login later - display bugs get fixed server-side"),
-        (false, "Don't log out or clear cookies / site data for chat.z.ai before backing up"),
-        (false, "Don't click \"clear all conversations\" in a panic - an empty sidebar is usually a display bug"),
-        (false, "Don't keep chatting as guest - guest chats live only in local storage"),
-        (false, "Don't run cleanup tools (CCleaner-style) that wipe site data before the backup"),
-        (false, "Don't uninstall your browser or delete its profile - the saved sign-in lives inside it"),
+        (true,  "Save your chat links first. They still open."),
+        (true,  "Press Save all my chats. Keep a copy on this computer."),
+        (true,  "Use the same login every time."),
+        (true,  "Check the email on the website. Right account?"),
+        (false, "Don't log out yet."),
+        (false, "Don't clear cookies or site data."),
+        (false, "Don't delete your chats in a panic."),
+        (false, "Don't keep chatting as a guest. Guest chats are not saved."),
+        (false, "Don't run cleaning apps yet. Wait for the backup."),
     };
 
     public MainWindow()
@@ -125,7 +126,7 @@ internal sealed class MainWindow : Window
         _openBtn.Click += (_, _) => OpenFolder();
         Activated += async (_, _) => { if (_autoRescan && !_busy) await CheckAsync(); };
 
-        var root = new Grid { ColumnDefinitions = new("*, 250"), Margin = new(20) };
+        var root = new Grid { ColumnDefinitions = new("*, 300"), Margin = new(20) };
         root.Children.Add(BuildLeftPanel());
         Grid.SetColumn(root.Children[^1], 0);
         root.Children.Add(BuildTipsPanel());
@@ -144,6 +145,8 @@ internal sealed class MainWindow : Window
         var statusBox = new Border
         {
             Background = new SolidColorBrush(Panel),
+            BorderBrush = new SolidColorBrush(PanelBorder),
+            BorderThickness = new(1),
             CornerRadius = new CornerRadius(10), Padding = new(16),
             Child = _status, MinHeight = 64
         };
@@ -160,18 +163,42 @@ internal sealed class MainWindow : Window
     private Control BuildTipsPanel()
     {
         var panel = new StackPanel { Spacing = 12 };
-        panel.Children.Add(new TextBlock { Text = "Protect your session IDs", FontSize = 15, FontWeight = FontWeight.SemiBold, Foreground = new SolidColorBrush(Text), TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(new TextBlock
+        {
+            Text = "IF THE LIST GOES EMPTY",
+            FontSize = 12, FontWeight = FontWeight.Bold,
+            Foreground = new SolidColorBrush(Muted)
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Your chats are almost never gone.",
+            FontSize = 16, FontWeight = FontWeight.SemiBold,
+            Foreground = new SolidColorBrush(Text), TextWrapping = TextWrapping.Wrap
+        });
+        bool? lastGood = null;
         foreach (var (good, tip) in Tips)
         {
-            var tb = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
-            tb.Inlines.Add(new Run { Text = good ? "✓  " : "✗  ", Foreground = new SolidColorBrush(good ? Good : Bad), FontWeight = FontWeight.Bold });
-            tb.Inlines.Add(new Run { Text = tip, Foreground = new SolidColorBrush(good ? Color.Parse("#cbd5e1") : Text) });
+            if (lastGood != good)
+            {
+                panel.Children.Add(new TextBlock
+                {
+                    Text = good ? "DO" : "DON'T",
+                    FontSize = 17, FontWeight = FontWeight.Bold, Margin = new(0, 10, 0, 0),
+                    Foreground = new SolidColorBrush(good ? Good : Bad)
+                });
+                lastGood = good;
+            }
+            var tb = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 14, Margin = new(6, 0, 0, 0) };
+            tb.Inlines.Add(new Run { Text = good ? "✓  " : "✗  ", FontSize = 15, FontWeight = FontWeight.Bold, Foreground = new SolidColorBrush(good ? Good : Bad) });
+            tb.Inlines.Add(new Run { Text = tip, Foreground = new SolidColorBrush(Text) });
             panel.Children.Add(tb);
         }
         return new Border
         {
             Background = new SolidColorBrush(Panel),
-            CornerRadius = new CornerRadius(10), Padding = new(14),
+            BorderBrush = new SolidColorBrush(PanelBorder),
+            BorderThickness = new(1),
+            CornerRadius = new CornerRadius(10), Padding = new(16),
             Child = new ScrollViewer { Content = panel }
         };
     }
@@ -213,7 +240,7 @@ internal sealed class MainWindow : Window
         if (working is null)
         {
             SetStatus("We couldn't find a working sign-in on this computer.\n\nOpen your browser, go to chat.z.ai and log in (not as guest), then come back - we'll re-check automatically when the browser is in front.",
-                new SolidColorBrush(Color.Parse("#fdba74")));
+                new SolidColorBrush(Color.Parse("#B45309")));
             Log("No working sign-in. Log in to chat.z.ai in the browser, then switch back to this window.");
             _autoRescan = true;
         }
@@ -229,7 +256,7 @@ internal sealed class MainWindow : Window
             if (preview.Item1 == 0)
             {
                 SetStatus($"Signed in as {Recovery.AccountEmail}, but this account's list is empty.\n\nIf you had chats, they may be under a different login method (for example Google vs email). Log in to chat.z.ai with that account, then press Check again.",
-                    new SolidColorBrush(Color.Parse("#fdba74")));
+                    new SolidColorBrush(Color.Parse("#B45309")));
                 _autoRescan = true;
             }
             else
