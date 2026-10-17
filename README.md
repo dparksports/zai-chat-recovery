@@ -2,125 +2,80 @@
 
 ![Z.ai Chat Recovery](assets/banner.svg)
 
+**Your chat list looks empty. Take a breath — your chats are almost certainly still there.**
+
+Sometimes the chat.z.ai website stops showing your conversation list (it happened to many people on October 16, 2026). It looks like everything was deleted. It almost never is. The chats are still on the website's computers — only the list stopped showing.
+
+This free, open-source app checks that for you, saves every conversation to your computer, lets you read them comfortably, and can even put a chat back into your account if you want it there again.
+
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-3776ab.svg)](recover_zai_chats.py)
-[![Windows app](https://img.shields.io/badge/Windows-app-0078d4.svg)](windows-app/)
 
-Your **chat.z.ai sidebar suddenly shows nothing** — every conversation appears
-gone. Before you panic: an empty sidebar is almost always a **frontend
-rendering bug**, not lost data. The conversations stay on Z.ai's servers, and
-each one still opens by its direct URL (`chat.z.ai/c/<session-id>`). This tool
-recovers **all of them** into local files, read-only, in about a minute.
+## What do I do?
 
-Built and battle-tested during the October 16, 2026 incident (empty sidebar
-after the `zchat.z.ai` rollout): 23/23 conversations recovered, transcripts,
-JSON, and direct URLs included.
+1. **Download** the app for your computer from [Releases](../../releases) (see the table below).
+2. **Open it and click "Check my chats."** It looks for your saved sign-in (Chrome, Edge, Brave, or Firefox) and tells you in plain words what it finds — like *"Good news — we can see your 23 chats."*
+3. **Click "Save all my chats."** Everything is copied to a folder on your computer: readable pages, the direct links to each chat, and a safe full-fidelity copy.
 
-## Two ways to run it
+That's it. Three steps, two buttons.
 
-**Prerequisite, both ways:** log in to [chat.z.ai](https://chat.z.ai) in your
-browser (Google sign-in) at least once on this computer — your conversations
-live in that account, and the tool reads that saved sign-in to reach them.
-Guest-mode chats exist only inside the browser and cannot be recovered.
+> **One thing first:** make sure you've logged in to [chat.z.ai](https://chat.z.ai) with your Google account in your browser at least once on this computer. Your chats live in that account — the app uses that saved sign-in to reach them. (The app reminds you of this on its main screen.)
 
-### 1. Python script (Windows / macOS / Linux)
+## Downloads
 
-Requires Python 3.8+ and any Chromium browser (Chrome / Edge / Brave /
-Chromium) on the machine where you're logged in to chat.z.ai. No packages,
-no install:
+| File | For |
+|---|---|
+| `ZaiChatRecovery-windows-x64.zip` | Windows 10/11 — unzip, open the folder, run `ZaiChatRecovery.exe` |
+| `ZaiChatRecovery-mac-arm64.zip` | Mac with Apple chip (M1/M2/M3…) — the first time: right-click the app → **Open** |
+| `ZaiChatRecovery-mac-x64.zip` | Intel Mac — same right-click → Open the first time |
+| `ZaiChatRecovery-linux-x64.tar.gz` | Linux |
+| `recover_zai_chats.py` | For people who like terminals: one Python file, no installs |
+
+**Windows note:** Windows may show a blue "protected your PC" screen because the app isn't from a big company. Click **More info → Run anyway**. (The app is open source — anyone can read exactly what it does.)
+
+## If you're worried right now
+
+![Do and don't](assets/do-dont-tips.svg)
+
+The short version: **save first, don't fix later.** Don't log out, don't clear anything, don't delete chats in a panic — those steps are how a display problem turns into a real loss. The chat links (`chat.z.ai/c/…`) still open even while the list is empty; save them first.
+
+## Reading your saved chats
+
+![Viewer](assets/viewer.svg)
+
+Click **"Read my chats"** and the app shows every conversation in a clean list — search, click, and read, with the assistant's reasoning kept out of the way, web searches noted, and any photos or files shown right where they appeared. Every chat also has an **"Open on chat.z.ai"** button and works with backups you saved earlier, including ones made by the Python tool.
+
+## Bringing a chat back
+
+![Two ways to restore](assets/restore-two-ways.svg)
+
+Two buttons, your choice:
+
+- **Continue by paste** — copies the whole conversation so you can paste it into a new chat and keep going. Nothing is written to your account.
+- **Restore to my account…** — recreates the conversation as a new chat in your account (it appears as "New Chat"; rename it after opening). This is the **only** thing this app can ever write to your account, it happens only after you say yes to a clear explanation, and it never deletes or changes anything else.
+
+## Common questions
+
+| What you see | What to do |
+|---|---|
+| "No working sign-in" | Open chat.z.ai in your browser, log in (not as guest), come back — the app re-checks by itself. |
+| The list shows someone else's (empty) account | Check the email at the top of the chat.z.ai website — Google and email sign-ins can be different accounts. |
+| Mac says the app is from an "unidentified developer" | Right-click the app → **Open** → Open. Normal for apps not sold through the Mac App Store. |
+| Where did my chats go? | Almost always: nowhere. It's a website display problem. This app proves it in ten seconds. |
+
+## Your privacy, in one sentence
+
+Everything happens on your computer; the app only ever talks to chat.z.ai, only ever reads (except the one restore button you explicitly approve), and your sign-in never leaves your machine.
+
+## For developers and tinkerers
+
+The Python one-liner works everywhere with no installs:
 
 ```
 python recover_zai_chats.py
 ```
 
-That one command finds your session token in browser local storage, verifies
-it, downloads every conversation, and writes a timestamped folder:
-
-| File | What it is |
-|---|---|
-| `INDEX.md` | all chats with links and message counts |
-| `chat-urls.md` | direct `chat.z.ai/c/<id>` URLs — they open in your browser even while the sidebar is broken |
-| `<title>__<id>.md` | one readable transcript per chat |
-| `<id>.json` | raw API JSON (lossless copy) |
-
-Options: `--out DIR` (output folder), `--limit N` (quick test),
-`--token eyJ…` (manual token — F12 → Application → Local Storage →
-`https://chat.z.ai` → key `token`).
-
-### 2. Desktop app — Windows, macOS, Linux
-
-Grab the archive for your platform from [Releases](../../releases):
-
-| File | Platform |
-|---|---|
-| `ZaiChatRecovery-windows-x64.zip` | Windows 10/11 (64-bit) |
-| `ZaiChatRecovery-mac-arm64.zip` | macOS 12+ (Apple Silicon) |
-| `ZaiChatRecovery-mac-x64.zip` | macOS 12+ (Intel) |
-| `ZaiChatRecovery-linux-x64.tar.gz` | Linux x64 (self-contained, includes a `.desktop` file) |
-
-Unzip and run `ZaiChatRecovery` (on macOS: right-click → **Open** the first
-time — the build is ad-hoc signed). .NET is bundled, nothing to install.
-Two buttons: **Check my chats** — a diagnosis that shows how many
-conversations are visible on your account before anything is saved — and
-**Save all my chats**. Built-in **"Protect your session IDs"** tips panel.
-Scans Chrome, Edge, Brave, Chromium (including snap) *and Firefox* on all
-three operating systems. An earlier Windows/WinForms app is superseded by this one
-(source kept under `windows-app/` for reference).
-
-![How it works](assets/how-it-works.svg)
-
-## Reading your recovered chats in the app
-
-The desktop app now includes a **reader**: after saving (or at any later
-launch - it remembers your last backup and can open any backup folder made
-by an earlier version or by the Python CLI). Click **Read my chats** for a
-searchable list of every conversation, rendered as chat bubbles with
-timestamps, collapsed "assistant thinking" sections, and an
-**Open on chat.z.ai** button per chat. You can also start it directly:
-
-```
-ZaiChatRecovery --open-reader <backup-folder>
-```
-
-## Keep your sessions recoverable
-
-![Do and don't](assets/do-dont-tips.svg)
-
-The one-line version: **the session ID is the key.** Chats stay reachable at
-`chat.z.ai/c/<session-id>` for as long as the account and its session exist —
-so save the URLs and back up before you log out, clear anything, or run a
-"cleanup" tool.
-
-## Troubleshooting
-
-| Symptom | Meaning / fix |
-|---|---|
-| "Only guest/invalid tokens found" | Your browser is in a guest session. Log in to chat.z.ai (not as guest), then rerun. |
-| Token rejected (401/403) | Session expired. Log in to chat.z.ai in the browser, then rerun. |
-| "API returned an EMPTY list" | You may be signed into a different account than the one holding the chats (e.g. Google vs email sign-in create separate accounts). Log in with that account and rerun. |
-| No browsers found | The script checks default profile locations for Chrome/Edge/Brave/Chromium. Use `--token`. |
-
-## Safety
-
-- **Read-only**: only `GET /api/v1/chats`, `GET /api/v1/chats/{id}` and
-  `POST /api/v1/chats/{id}/messages/batch` (a content fetch). The tool cannot
-  delete, edit, or send anything to your chats.
-- **No exfiltration**: requests go to `chat.z.ai` only; your token stays on
-  this machine. No dependencies, no telemetry.
-- **Use only on your own account.**
-
-## Repository layout
-
-```
-recover_zai_chats.py    # single-file cross-platform CLI (stdlib only)
-desktop-app/            # Avalonia app: Windows + macOS + Linux, one codebase
-windows-app/            # earlier WinForms app (superseded, kept for reference)
-assets/                 # infographics (SVG)
-.github/workflows/      # CI: builds win/mac/linux binaries on native runners
-LICENSE                 # Apache License 2.0
-```
+How it all actually works — the session-token discovery, the API, the backup formats, the import endpoint, and every engineering gotcha we hit — is documented in **[TECHNICAL_NOTES.md](TECHNICAL_NOTES.md)**.
 
 ## License
 
-Apache-2.0 — see [LICENSE](LICENSE). Fixes and port reports welcome via
-issues/PRs, especially for other browsers and OSes.
+Apache-2.0 — see [LICENSE](LICENSE). Free to use, share, and modify.
