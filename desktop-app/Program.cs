@@ -13,12 +13,24 @@ using Avalonia.Controls.Documents;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
 
 namespace ZaiChatRecovery.Desktop;
 
 internal static class Program
 {
+    static Program()
+    {
+        // never fail silently: WinExe crashes leave no console behind
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => WriteCrash(e.ExceptionObject);
+        TaskScheduler.UnobservedTaskException += (_, e) => { WriteCrash(e.Exception); e.SetObserved(); };
+    }
+
+    internal static void WriteCrash(object? ex) =>
+        File.AppendAllText(Path.Combine(Path.GetTempPath(), "zai-recovery-crash.log"),
+            $"[{DateTime.Now:O}] {ex}{Environment.NewLine}");
+
     [STAThread]
     public static int Main(string[] args)
     {
@@ -33,25 +45,41 @@ internal static class Program
 
 internal sealed class App : Application
 {
+    public App()
+    {
+        // Shields Up look and feel: near-black surfaces, iOS-blue accent
+        Styles.Add(new FluentTheme());
+        RequestedThemeVariant = ThemeVariant.Dark;
+        Resources["SystemAccentColor"] = Color.Parse("#007AFF");
+        Resources["SystemAccentColorLight1"] = Color.Parse("#4098FF");
+        Resources["SystemAccentColorLight2"] = Color.Parse("#66AAFF");
+        Resources["SystemAccentColorDark1"] = Color.Parse("#0062CC");
+    }
+
     public override void Initialize() { }
 
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
-            desktop.MainWindow = new MainWindow();
+        {
+            try { desktop.MainWindow = new MainWindow(); }
+            catch (Exception ex) { Program.WriteCrash(ex); throw; }
+        }
         base.OnFrameworkInitializationCompleted();
     }
 }
 
 internal sealed class MainWindow : Window
 {
-    private static readonly Color Bg = Color.Parse("#0f172a");
-    private static readonly Color Panel = Color.Parse("#111b2e");
-    private static readonly Color Text = Color.Parse("#e2e8f0");
-    private static readonly Color Muted = Color.Parse("#94a3b8");
-    private static readonly Color Cyan = Color.Parse("#22d3ee");
-    private static readonly Color Good = Color.Parse("#22c55e");
-    private static readonly Color Bad = Color.Parse("#ef4444");
+    // Shields Up palette (its Styles/Theme.xaml): #1D1D1F surfaces, #007AFF accent,
+    // #D70015 danger, #86868B muted text
+    private static readonly Color Bg = Color.Parse("#1D1D1F");
+    private static readonly Color Panel = Color.Parse("#2C2C2E");
+    private static readonly Color Text = Color.Parse("#F5F5F7");
+    private static readonly Color Muted = Color.Parse("#86868B");
+    private static readonly Color Cyan = Color.Parse("#007AFF");
+    private static readonly Color Good = Color.Parse("#34C759");
+    private static readonly Color Bad = Color.Parse("#D70015");
 
     private readonly TextBlock _status = new() { Text = "Click \"Check my chats\" to start — this app can only read, never change anything.", TextWrapping = TextWrapping.Wrap, Foreground = Brushes.White };
     private readonly Button _checkBtn = new() { Content = "Check my chats", Padding = new(14, 8) };
@@ -59,7 +87,7 @@ internal sealed class MainWindow : Window
     private readonly Button _openBtn = new() { Content = "Open the folder", Padding = new(14, 8), IsEnabled = false };
     private readonly TextBlock _folderLabel = new() { Foreground = new SolidColorBrush(Muted), TextWrapping = TextWrapping.Wrap };
     private readonly ProgressBar _bar = new() { Height = 16, Minimum = 0, Maximum = 100, Value = 0 };
-    private readonly TextBox _log = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, FontFamily = new FontFamily("Consolas,Menlo,monospace") };
+    private readonly TextBox _log = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap };
     private string _outDir = "";
     private bool _autoRescan;
     private bool _busy;

@@ -11,3 +11,4 @@ desktop-app/bin/
 desktop-app/obj/
 desktop-app/publish/
 dist/
+desktop-app/screenshot.ps1

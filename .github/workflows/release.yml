@@ -43,13 +43,21 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-      - run: dotnet publish desktop-app -c Release -r ${{ matrix.rid }} --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o publish
+      - run: dotnet publish desktop-app -c Release -r ${{ matrix.rid }} --self-contained -o publish
+      - name: smoke test (runner is Apple Silicon; exit 0 or 2 both prove the binary runs)
+        if: matrix.rid == 'osx-arm64'
+        run: |
+          publish/ZaiChatRecovery --selftest || code=$?
+          code=${code:-0}; echo "selftest exit $code"; [ "$code" -le 2 ]
       - name: bundle .app and zip
         run: |
           RID="${{ matrix.rid }}"
           SUFFIX=$([ "$RID" = "osx-arm64" ] && echo "mac-arm64" || echo "mac-x64")
-          mkdir -p "ZaiChatRecovery.app/Contents/MacOS"
-          cp publish/ZaiChatRecovery "ZaiChatRecovery.app/Contents/MacOS/ZaiChatRecovery"
+          mkdir -p "ZaiChatRecovery.app/Contents/MacOS" "ZaiChatRecovery.app/Contents/Resources"
+          # no PublishSingleFile on macOS: single-file bundles break ad-hoc codesign
+          # (embedded dylibs fail signature checks -> killed on launch). Ship the
+          # full publish output instead and sign the whole tree.
+          cp -R publish/. "ZaiChatRecovery.app/Contents/MacOS/"
           chmod +x "ZaiChatRecovery.app/Contents/MacOS/ZaiChatRecovery"
           cat > "ZaiChatRecovery.app/Contents/Info.plist" <<'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
@@ -66,7 +74,7 @@ jobs:
           </dict>
           </plist>
           PLIST
-          codesign --force --sign - "ZaiChatRecovery.app"
+          codesign --force --deep --sign - "ZaiChatRecovery.app"
           ditto -c -k --keepParent "ZaiChatRecovery.app" "ZaiChatRecovery-$SUFFIX.zip"
       - uses: actions/upload-artifact@v4
         with:
@@ -81,6 +89,10 @@ jobs:
         with:
           dotnet-version: "10.0.x"
       - run: dotnet publish desktop-app -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o publish
+      - name: smoke test
+        run: |
+          publish/ZaiChatRecovery --selftest || code=$?
+          code=${code:-0}; echo "selftest exit $code"; [ "$code" -le 2 ]
       - name: package tarball with .desktop file
         run: |
           mkdir -p pkg && cp publish/ZaiChatRecovery pkg/ && chmod +x pkg/ZaiChatRecovery
