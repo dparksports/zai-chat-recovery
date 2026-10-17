@@ -5,6 +5,7 @@
 
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using Avalonia.Media;
 
@@ -67,6 +68,23 @@ internal sealed class ReaderWindow : Window
         {
             if (_list.SelectedItem is ChatSummary s) Show(s);
         };
+        // items must BE ChatSummary objects (not pre-built panels) so that
+        // SelectedItem pattern-matches in the handler above
+        _list.ItemTemplate = new FuncDataTemplate<ChatSummary>((s, _) =>
+        {
+            var b = new StackPanel { Spacing = 2, Margin = new(4, 6, 4, 6) };
+            b.Children.Add(new TextBlock
+            {
+                Text = s?.Title ?? "", FontSize = 13, FontWeight = FontWeight.SemiBold,
+                Foreground = new SolidColorBrush(Text), TextWrapping = TextWrapping.Wrap
+            });
+            b.Children.Add(new TextBlock
+            {
+                Text = $"{s?.Messages ?? 0} messages · {s?.UpdatedText}", FontSize = 11,
+                Foreground = new SolidColorBrush(Muted)
+            });
+            return b;
+        });
 
         var left = new Border
         {
@@ -109,30 +127,16 @@ internal sealed class ReaderWindow : Window
         var q = (_search.Text ?? "").Trim();
         _list.ItemsSource = _all
             .Where(s => q.Length == 0 || s.Title.Contains(q, StringComparison.OrdinalIgnoreCase))
-            .Select(s =>
-            {
-                var b = new StackPanel { Spacing = 2, Margin = new(4, 6, 4, 6) };
-                b.Children.Add(new TextBlock
-                {
-                    Text = s.Title, FontSize = 13, FontWeight = FontWeight.SemiBold,
-                    Foreground = new SolidColorBrush(Text), TextWrapping = TextWrapping.Wrap
-                });
-                b.Children.Add(new TextBlock
-                {
-                    Text = $"{s.Messages} messages · {s.UpdatedText}",
-                    FontSize = 11, Foreground = new SolidColorBrush(Muted)
-                });
-                return b;
-            });
+            .ToList();
     }
 
     private void Show(ChatSummary s)
     {
         _current = s;
-        _chatTitle.Text = s.Title;
+        var views = BackupReader.LoadChat(s);
+        _chatTitle.Text = s.Title + $"   ({views.Count} messages)";
         _openWeb.IsEnabled = true;
         _msgs.Children.Clear();
-        var views = BackupReader.LoadChat(s);
         if (views.Count == 0)
         {
             _msgs.Children.Add(new TextBlock
