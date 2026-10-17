@@ -64,8 +64,8 @@ Two buttons: **Check my chats** — a diagnosis that shows how many
 conversations are visible on your account before anything is saved — and
 **Save all my chats**. Built-in **"Protect your session IDs"** tips panel.
 Scans Chrome, Edge, Brave, Chromium (including snap) *and Firefox* on all
-three operating systems. The v1.0.0 Windows/WinForms app is superseded by
-this one (source kept under `windows-app/` for reference).
+three operating systems. An earlier Windows/WinForms app is superseded by this one
+(source kept under `windows-app/` for reference).
 
 ![How it works](assets/how-it-works.svg)
 
@@ -101,7 +101,7 @@ so save the URLs and back up before you log out, clear anything, or run a
 ```
 recover_zai_chats.py    # single-file cross-platform CLI (stdlib only)
 desktop-app/            # Avalonia app: Windows + macOS + Linux, one codebase
-windows-app/            # v1.0.0 WinForms app (superseded, kept for reference)
+windows-app/            # earlier WinForms app (superseded, kept for reference)
 assets/                 # infographics (SVG)
 .github/workflows/      # CI: builds win/mac/linux binaries on native runners
 LICENSE                 # Apache License 2.0
