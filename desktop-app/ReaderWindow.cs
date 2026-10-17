@@ -113,7 +113,22 @@ internal sealed class ReaderWindow : Window
         topGrid.Children.Add(_openWeb);
         Grid.SetColumn(_openWeb, 1);
 
-        Content = new StackPanel { Margin = new(20), Spacing = 8, Children = { head, hint, _search, topGrid, body } };
+        // Grid (not StackPanel) so the body gets bounded height - a StackPanel
+        // gives infinite height, which makes the ScrollViewer size to content
+        // instead of the pane, and scrolling silently stops working.
+        var root = new Grid { Margin = new(20), RowDefinitions = new("Auto,Auto,Auto,Auto,*") };
+        root.Children.Add(head);
+        root.Children.Add(hint);
+        hint.Margin = new(0, 6, 0, 8);
+        Grid.SetRow(hint, 1);
+        root.Children.Add(_search);
+        _search.Margin = new(0, 0, 0, 8);
+        Grid.SetRow(_search, 2);
+        root.Children.Add(topGrid);
+        Grid.SetRow(topGrid, 3);
+        root.Children.Add(body);
+        Grid.SetRow(body, 4);
+        Content = root;
         RefreshList();
         if (_all.Count > 0) _list.SelectedIndex = 0;
     }
