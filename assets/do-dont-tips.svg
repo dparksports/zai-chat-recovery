@@ -1,73 +1,47 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="780" viewBox="0 0 1200 780" role="img" aria-label="Do and don't tips to preserve your chat session IDs">
-  <defs>
-    <linearGradient id="bg3" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#0f172a"/>
-      <stop offset="1" stop-color="#0b1220"/>
-    </linearGradient>
-  </defs>
-  <rect width="1200" height="780" rx="16" fill="url(#bg3)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740" role="img" aria-label="What to do and not do when the chat list goes empty">
+  <rect width="1200" height="740" rx="16" fill="#F5F5F7"/>
   <g font-family="Segoe UI, system-ui, -apple-system, sans-serif">
-    <text x="600" y="62" fill="#e2e8f0" font-size="32" font-weight="700" text-anchor="middle">Keep your chat sessions recoverable</text>
-    <text x="600" y="96" fill="#94a3b8" font-size="18" text-anchor="middle">What to do &#8212; and what never to do &#8212; when the conversation list goes missing</text>
+    <text x="600" y="58" fill="#1D1D1F" font-size="30" font-weight="700" text-anchor="middle">If the list goes empty</text>
+    <text x="600" y="90" fill="#34C759" font-size="20" font-weight="600" text-anchor="middle">Your chats are almost never gone.</text>
 
     <!-- DO column -->
-    <rect x="60" y="130" width="530" height="560" rx="14" fill="#052e16" stroke="#166534"/>
-    <text x="325" y="180" fill="#86efac" font-size="24" font-weight="700" text-anchor="middle">DO</text>
-    <g fill="#e2e8f0" font-size="17">
-      <circle cx="100" cy="228" r="11" fill="#22c55e"/><path d="M95 228 l4 4 7 -8" stroke="#052e16" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <text x="126" y="234">Save the direct chat URLs (chat.z.ai/c/&lt;id&gt;) right away &#8212;</text>
-      <text x="126" y="258">they open fine even while the sidebar is empty</text>
-
-      <circle cx="100" cy="296" r="11" fill="#22c55e"/><path d="M95 296 l4 4 7 -8" stroke="#052e16" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <text x="126" y="302">Back up transcripts + JSON with this tool before you</text>
-      <text x="126" y="326">touch any browser settings</text>
-
-      <circle cx="100" cy="364" r="11" fill="#22c55e"/><path d="M95 364 l4 4 7 -8" stroke="#052e16" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <text x="126" y="370">Log in with the same method every time &#8212; Google vs email</text>
-      <text x="126" y="394">sign-ins can create separate accounts</text>
-
-      <circle cx="100" cy="432" r="11" fill="#22c55e"/><path d="M95 432 l4 4 7 -8" stroke="#052e16" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <text x="126" y="438">Write down which account holds the chats (check the</text>
-      <text x="126" y="462">email in Settings &#8594; Account) while you are logged in</text>
-
-      <circle cx="100" cy="500" r="11" fill="#22c55e"/><path d="M95 500 l4 4 7 -8" stroke="#052e16" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <text x="126" y="506">Hard-reload (Ctrl+Shift+R) or re-login after a while &#8212;</text>
-      <text x="126" y="530">frontend regressions get fixed server-side</text>
-
-      <circle cx="100" cy="568" r="11" fill="#22c55e"/><path d="M95 568 l4 4 7 -8" stroke="#052e16" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <text x="126" y="574">Report the empty-sidebar bug with exact date + time &#8212;</text>
-      <text x="126" y="598">it helps the engineers bound the bad deployment</text>
+    <rect x="60" y="120" width="530" height="540" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+    <rect x="60" y="120" width="530" height="54" rx="14" fill="#E8F8EE"/>
+    <text x="325" y="155" fill="#1E8E3E" font-size="21" font-weight="700" text-anchor="middle">DO</text>
+    <g fill="#1D1D1F" font-size="17">
+      <circle cx="104" cy="212" r="12" fill="#34C759"/><path d="M99 212 l4 4 7 -8" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <text x="130" y="218">Save your chat links first. They still open.</text>
+      <circle cx="104" cy="276" r="12" fill="#34C759"/><path d="M99 276 l4 4 7 -8" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <text x="130" y="282">Press "Save all my chats". Keep a copy.</text>
+      <circle cx="104" cy="340" r="12" fill="#34C759"/><path d="M99 340 l4 4 7 -8" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <text x="130" y="346">Use the same login every time.</text>
+      <circle cx="104" cy="404" r="12" fill="#34C759"/><path d="M99 404 l4 4 7 -8" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <text x="130" y="410">Check the email on the website.</text>
+      <circle cx="104" cy="468" r="12" fill="#34C759"/><path d="M99 468 l4 4 7 -8" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <text x="130" y="474">Right account? Then relax.</text>
     </g>
+    <text x="325" y="560" fill="#86868B" font-size="15" text-anchor="middle">The links look like chat.z.ai/c/…</text>
+    <text x="325" y="584" fill="#86868B" font-size="15" text-anchor="middle">They work even while the list is empty.</text>
 
     <!-- DON'T column -->
-    <rect x="610" y="130" width="530" height="560" rx="14" fill="#450a0a" stroke="#991b1b"/>
-    <text x="875" y="180" fill="#fca5a5" font-size="24" font-weight="700" text-anchor="middle">DON'T</text>
-    <g fill="#e2e8f0" font-size="17">
-      <circle cx="650" cy="228" r="11" fill="#ef4444"/><path d="M645 223 l10 10 M655 223 l-10 10" stroke="#450a0a" stroke-width="2.5" stroke-linecap="round"/>
-      <text x="676" y="234">Don't log out or clear cookies / site data for chat.z.ai</text>
-      <text x="676" y="258">before backing up &#8212; that can end the only valid session</text>
-
-      <circle cx="650" cy="296" r="11" fill="#ef4444"/><path d="M645 291 l10 10 M655 291 l-10 10" stroke="#450a0a" stroke-width="2.5" stroke-linecap="round"/>
-      <text x="676" y="302">Don't click "clear all conversations" or delete chats in a</text>
-      <text x="676" y="326">panic &#8212; an empty sidebar almost never means lost data</text>
-
-      <circle cx="650" cy="364" r="11" fill="#ef4444"/><path d="M645 359 l10 10 M655 359 l-10 10" stroke="#450a0a" stroke-width="2.5" stroke-linecap="round"/>
-      <text x="676" y="370">Don't keep chatting as a guest &#8212; guest conversations live</text>
-      <text x="676" y="394">only in browser local storage and die with it</text>
-
-      <circle cx="650" cy="432" r="11" fill="#ef4444"/><path d="M645 427 l10 10 M655 427 l-10 10" stroke="#450a0a" stroke-width="2.5" stroke-linecap="round"/>
-      <text x="676" y="438">Don't run cleanup / privacy tools (CCleaner-style) that</text>
-      <text x="676" y="462">wipe browser site data before the backup is done</text>
-
-      <circle cx="650" cy="500" r="11" fill="#ef4444"/><path d="M645 495 l10 10 M655 495 l-10 10" stroke="#450a0a" stroke-width="2.5" stroke-linecap="round"/>
-      <text x="676" y="506">Don't uninstall Chrome or delete its profile &#8212; the session</text>
-      <text x="676" y="530">token and unsent drafts are stored inside it</text>
-
-      <circle cx="650" cy="568" r="11" fill="#ef4444"/><path d="M645 563 l10 10 M655 563 l-10 10" stroke="#450a0a" stroke-width="2.5" stroke-linecap="round"/>
-      <text x="676" y="574">Don't assume the worst &#8212; verify with the direct-URL test</text>
-      <text x="676" y="598">first; most "lost history" reports are frontend bugs</text>
+    <rect x="610" y="120" width="530" height="540" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+    <rect x="610" y="120" width="530" height="54" rx="14" fill="#FDECEC"/>
+    <text x="875" y="155" fill="#D70015" font-size="21" font-weight="700" text-anchor="middle">DON'T</text>
+    <g fill="#1D1D1F" font-size="17">
+      <circle cx="654" cy="212" r="12" fill="#D70015"/><path d="M649 207 l10 10 M659 207 l-10 10" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="680" y="218">Don't log out yet.</text>
+      <circle cx="654" cy="276" r="12" fill="#D70015"/><path d="M649 271 l10 10 M659 271 l-10 10" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="680" y="282">Don't clear cookies or site data.</text>
+      <circle cx="654" cy="340" r="12" fill="#D70015"/><path d="M649 335 l10 10 M659 335 l-10 10" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="680" y="346">Don't delete your chats in a panic.</text>
+      <circle cx="654" cy="404" r="12" fill="#D70015"/><path d="M649 399 l10 10 M659 399 l-10 10" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="680" y="410">Don't keep chatting as a guest.</text>
+      <circle cx="654" cy="468" r="12" fill="#D70015"/><path d="M649 463 l10 10 M659 463 l-10 10" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="680" y="474">Don't run cleaning apps yet.</text>
     </g>
+    <text x="875" y="560" fill="#86868B" font-size="15" text-anchor="middle">Guest chats are not saved to your account.</text>
+    <text x="875" y="584" fill="#86868B" font-size="15" text-anchor="middle">Cleaning apps can erase the saved sign-in.</text>
 
-    <text x="600" y="738" fill="#64748b" font-size="16" text-anchor="middle">The session ID is the key: chats stay reachable at chat.z.ai/c/&lt;session-id&gt; as long as the account and its session survive.</text>
+    <text x="600" y="706" fill="#86868B" font-size="15" text-anchor="middle">Save first, fix later — that's how a small website problem stays small.</text>
   </g>
 </svg>

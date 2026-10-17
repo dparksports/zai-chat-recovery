@@ -18,6 +18,8 @@ This free, open-source app checks that for you, saves every conversation to your
 
 That's it. Three steps, two buttons.
 
+![Three steps](assets/steps.svg)
+
 > **One thing first:** make sure you've logged in to [chat.z.ai](https://chat.z.ai) with your Google account in your browser at least once on this computer. Your chats live in that account — the app uses that saved sign-in to reach them. (The app reminds you of this on its main screen.)
 
 ## Downloads
