@@ -93,9 +93,10 @@ internal sealed class MainWindow : Window
     private bool _autoRescan;
     private bool _busy;
 
-    // Panic-grade copy: short words, one idea per line, big type in the panel
+        // Panic-grade copy: short words, one idea per line, big type in the panel
     private static readonly (bool Good, string Tip)[] Tips =
     {
+        (true,  "Log in to chat.z.ai with your Google account first. Your chats live there."),
         (true,  "Save your chat links first. They still open."),
         (true,  "Press Save all my chats. Keep a copy on this computer."),
         (true,  "Use the same login every time."),
@@ -150,6 +151,19 @@ internal sealed class MainWindow : Window
             CornerRadius = new CornerRadius(10), Padding = new(16),
             Child = _status, MinHeight = 64
         };
+        var loginReminder = new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#E5F1FF")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#A8CFFF")),
+            BorderThickness = new(1),
+            CornerRadius = new CornerRadius(10), Padding = new(14, 10),
+            Child = new TextBlock
+            {
+                Text = "ℹ  First time? Open chat.z.ai in your browser and sign in with your Google account. Your chats live in that account — this app uses that saved sign-in to find and save them.",
+                TextWrapping = TextWrapping.Wrap, FontSize = 13,
+                Foreground = new SolidColorBrush(Text)
+            }
+        };
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Children = { _checkBtn, _saveBtn, _openBtn } };
         _log.Height = 330;
         var footer = new TextBlock
@@ -157,7 +171,7 @@ internal sealed class MainWindow : Window
             Text = "Free and open source (Apache-2.0) · Your saved sign-in never leaves this computer · Requests go to chat.z.ai only",
             Foreground = new SolidColorBrush(Color.Parse("#64748b")), TextWrapping = TextWrapping.Wrap, FontSize = 11
         };
-        return new StackPanel { Spacing = 12, Children = { title, sub, statusBox, buttons, _folderLabel, _bar, _log, footer } };
+        return new StackPanel { Spacing = 12, Children = { title, sub, loginReminder, statusBox, buttons, _folderLabel, _bar, _log, footer } };
     }
 
     private Control BuildTipsPanel()

@@ -18,6 +18,11 @@ JSON, and direct URLs included.
 
 ## Two ways to run it
 
+**Prerequisite, both ways:** log in to [chat.z.ai](https://chat.z.ai) in your
+browser (Google sign-in) at least once on this computer — your conversations
+live in that account, and the tool reads that saved sign-in to reach them.
+Guest-mode chats exist only inside the browser and cannot be recovered.
+
 ### 1. Python script (Windows / macOS / Linux)
 
 Requires Python 3.8+ and any Chromium browser (Chrome / Edge / Brave /
