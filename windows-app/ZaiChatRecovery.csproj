@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- SPDX-License-Identifier: Apache-2.0 · Copyright 2026 Z.ai Chat Recovery contributors -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>ZaiChatRecovery</AssemblyName>
+    <RootNamespace>ZaiChatRecovery</RootNamespace>
+    <Version>1.0.0</Version>
+    <Authors>Z.ai Chat Recovery contributors</Authors>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <Product>Z.ai Chat Recovery</Product>
+    <Description>Recover chat.z.ai conversations when the sidebar shows empty. Read-only.</Description>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+</Project>

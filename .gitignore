@@ -1,0 +1,10 @@
+# recovery outputs - never commit
+zai-chat-recovery-*/
+test-run/
+__pycache__/
+*.pyc
+.session_token
+windows-app/bin/
+windows-app/obj/
+windows-app/publish/
+dist/
