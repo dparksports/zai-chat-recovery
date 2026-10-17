@@ -25,12 +25,26 @@ That's it. Three steps, two buttons.
 | File | For |
 |---|---|
 | `ZaiChatRecovery-windows-x64.zip` | Windows 10/11 — unzip, open the folder, run `ZaiChatRecovery.exe` |
-| `ZaiChatRecovery-mac-arm64.zip` | Mac with Apple chip (M1/M2/M3…) — the first time: right-click the app → **Open** |
-| `ZaiChatRecovery-mac-x64.zip` | Intel Mac — same right-click → Open the first time |
+| `ZaiChatRecovery-mac-arm64.zip` | Mac with Apple chip (M1/M2/M3…) — see "Mac: how to open it the first time" below |
+| `ZaiChatRecovery-mac-x64.zip` | Intel Mac — same one-time open step below |
 | `ZaiChatRecovery-linux-x64.tar.gz` | Linux |
 | `recover_zai_chats.py` | For people who like terminals: one Python file, no installs |
 
 **Windows note:** Windows may show a blue "protected your PC" screen because the app isn't from a big company. Click **More info → Run anyway**. (The app is open source — anyone can read exactly what it does.)
+
+## Mac: how to open it the first time
+
+The Mac blocks apps it doesn't recognize, including this one — that's Gatekeeper doing its job. You only have to do this **once**; after that, the app opens like any other.
+
+**Step 1 — unzip and try to open it once.** Unzip the download, and double-click `ZaiChatRecovery.app`. Your Mac will say it can't be opened ("from an unidentified developer"). That's expected — this step makes your Mac record the app so you can approve it next.
+
+**Step 2 — open System Settings.** Click the Apple menu (top-left corner of the screen) → **System Settings** → **Privacy & Security**.
+
+**Step 3 — scroll down and click "Open Anyway".** Near the bottom you'll see a message about "ZaiChatRecovery" being blocked, with an **Open Anyway** button. Click it, enter your password or use Touch ID if asked, and the app opens.
+
+**If your Mac is older** (macOS Ventura or earlier): instead of Steps 2–3, just **right-click** (or Control-click) the app in Finder → **Open** → click **Open** in the window that appears.
+
+**If "Open Anyway" doesn't appear:** make sure you did Step 1 first (the button only shows up after the Mac has blocked the app once), then close and reopen System Settings.
 
 ## If you're worried right now
 
@@ -59,7 +73,7 @@ Two buttons, your choice:
 |---|---|
 | "No working sign-in" | Open chat.z.ai in your browser, log in (not as guest), come back — the app re-checks by itself. |
 | The list shows someone else's (empty) account | Check the email at the top of the chat.z.ai website — Google and email sign-ins can be different accounts. |
-| Mac says the app is from an "unidentified developer" | Right-click the app → **Open** → Open. Normal for apps not sold through the Mac App Store. |
+| Mac says the app can't be opened | Follow **"Mac: how to open it the first time"** above — you approve the app once in Privacy & Security, then it opens normally. |
 | Where did my chats go? | Almost always: nowhere. It's a website display problem. This app proves it in ten seconds. |
 
 ## Your privacy, in one sentence

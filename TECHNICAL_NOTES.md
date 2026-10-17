@@ -100,7 +100,11 @@ Avalonia gotchas paid for in bug reports, so you don't have to:
 - **Single-file publish breaks on macOS.** With ad-hoc codesigning,
   single-file bundles fail signature validation on embedded dylibs and are
   killed at launch. Ship the plain publish output inside the `.app` and
-  `codesign --force --deep --sign -`.
+  `codesign --force --deep --sign -`. Gatekeeper still prompts (no Apple
+  Developer ID); macOS Sequoia+ users approve via System Settings →
+  Privacy & Security → "Open Anyway" (the old right-click → Open bypass was
+  removed there), older macOS via right-click → Open. Terminal equivalent:
+  `xattr -d com.apple.quarantine /Applications/ZaiChatRecovery.app`.
 - **Compressed single-file broke Windows too** (SkiaSharp native load
   crashed at Avalonia setup on end-user machines while working on dev
   boxes) — plain-folder packaging everywhere now; the `--selftest` smoke
