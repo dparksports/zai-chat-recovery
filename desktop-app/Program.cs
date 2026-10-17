@@ -330,6 +330,18 @@ internal static class SelfTest
     public static int Run()
     {
         var sb = new StringBuilder();
+        // Force the native graphics library to load — this is exactly what fails
+        // at first launch when native-lib resolution breaks (SkiaSharp crash).
+        try
+        {
+            _ = SkiaSharp.SKImageInfo.Empty;
+            sb.AppendLine("skia native init: OK");
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine($"skia native init: FAILED {ex.GetType().Name}: {ex.Message}");
+            Write(sb); return 4;
+        }
         try
         {
             var cands = Recovery.FindTokenCandidates();

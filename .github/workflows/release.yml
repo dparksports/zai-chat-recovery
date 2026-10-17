@@ -25,8 +25,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-      - run: dotnet publish desktop-app -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o publish
-      - name: smoke test (exit 0 or 2 both prove the exe runs)
+      # plain folder layout (exe + DLLs): no single-file extraction, which broke
+      # SkiaSharp native loading on some machines (crash at Avalonia setup)
+      - run: dotnet publish desktop-app -c Release -r win-x64 --self-contained -o publish
+      - name: smoke test (GUI init + engine; exit 0 or 2 both pass)
         shell: pwsh
         run: |
           & publish\ZaiChatRecovery.exe --selftest
@@ -34,7 +36,7 @@ jobs:
           "selftest exit $code"
           if ($code -gt 2) { exit 1 }
       - shell: pwsh
-        run: Compress-Archive -Path publish/ZaiChatRecovery.exe -DestinationPath ZaiChatRecovery-windows-x64.zip -Force
+        run: Compress-Archive -Path publish\* -DestinationPath ZaiChatRecovery-windows-x64.zip -Force
       - uses: actions/upload-artifact@v4
         with:
           name: windows-zip
@@ -95,24 +97,15 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-      - run: dotnet publish desktop-app -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o publish
+      - run: dotnet publish desktop-app -c Release -r linux-x64 --self-contained -o publish
       - name: smoke test
         run: |
           publish/ZaiChatRecovery --selftest || code=$?
           code=${code:-0}; echo "selftest exit $code"; [ "$code" -le 2 ]
       - name: package tarball with .desktop file
         run: |
-          mkdir -p pkg && cp publish/ZaiChatRecovery pkg/ && chmod +x pkg/ZaiChatRecovery
-          cat > pkg/zai-chat-recovery.desktop <<'DESKTOP'
-          [Desktop Entry]
-          Type=Application
-          Name=Z.ai Chat Recovery
-          Comment=Recover chat.z.ai conversations when the sidebar shows empty (read-only)
-          Exec=ZaiChatRecovery
-          Terminal=false
-          Categories=Utility;
-          DESKTOP
-          tar czf ZaiChatRecovery-linux-x64.tar.gz -C pkg ZaiChatRecovery zai-chat-recovery.desktop
+          cp zai-chat-recovery.desktop publish/ 2>/dev/null || true
+          tar czf ZaiChatRecovery-linux-x64.tar.gz -C publish .
       - uses: actions/upload-artifact@v4
         with:
           name: linux-tar
