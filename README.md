@@ -69,6 +69,15 @@ Two buttons, your choice:
 - **Continue by paste** — copies the whole conversation so you can paste it into a new chat and keep going. Nothing is written to your account. This is the safe path.
 - **Restore to my account…** — puts the chat back on the website as a new conversation (it appears as "New Chat"; rename it after opening). This is the **only** thing this app can ever write to your account — it happens only after you say yes to one clear question, and it never deletes or changes anything else.
 
+## Never lose them again: dated backups
+
+Every time you save, the app creates a **new backup folder with the date on it** — like `Z.ai Backups/2026-10-17 2030`. Older backups are never touched or changed, so you can always go back to any day.
+
+- **"Remember for me — back up every month"** — one checkbox, and the app backs up your chats automatically on the first of each month. No reminders to set, nothing to remember.
+- **Unchanged chats cost nothing.** If a chat is the same as last month, the two backups share it quietly under the hood — you still see complete, independent folders for every date.
+- **"Check my backups"** — re-checks every file in every dated backup against its built-in integrity list and tells you in plain words: *"All 100 files across 2 backups verified — everything is intact."* If anything ever gets damaged or deleted, it names the file and the date it can be recovered from.
+- **Go back in time.** In the reader, the **Backup date** picker shows every saved date. Pick an older one to see your chats exactly as they were that day — and everything works there too: reading, copying, even restoring a chat back to your account from any date.
+
 ## Common questions
 
 | What you see | What to do |

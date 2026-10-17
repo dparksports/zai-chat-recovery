@@ -23,7 +23,7 @@ internal sealed class ReaderWindow : Window
     private static readonly Color Accent = Color.Parse("#007AFF");
     private static readonly Color UserTint = Color.Parse("#E5F1FF");
 
-    private readonly string _dir;
+    private string _dir;
     private readonly List<ChatSummary> _all;
     private readonly ListBox _list = new();
     private readonly TextBox _search = new() { Watermark = "Search chats…" };
@@ -154,6 +154,46 @@ internal sealed class ReaderWindow : Window
         Content = root;
         RefreshList();
         if (_all.Count > 0) _list.SelectedIndex = 0;
+
+        // time travel: if this folder is one of several dated snapshots, offer a date picker
+        var parent = Path.GetDirectoryName(Path.GetFullPath(folder));
+        var snaps = parent is null ? new List<string>() : Snapshots.List(parent);
+        if (snaps.Count > 1)
+        {
+            var names = snaps.Select(Path.GetFileName).ToList()!;
+            _snapCombo.ItemsSource = names;
+            _snapCombo.SelectedItem = Path.GetFileName(Path.GetFullPath(folder));
+            _snapCombo.SelectionChanged += (_, _) =>
+            {
+                if (_snapCombo.SelectedItem is string name)
+                {
+                    var dir = Path.Combine(parent!, name);
+                    if (!string.Equals(Path.GetFullPath(dir), Path.GetFullPath(_dir), StringComparison.OrdinalIgnoreCase))
+                        LoadFolder(dir);
+                }
+            };
+            actions.Children.Add(new TextBlock
+            {
+                Text = "Backup date:", FontSize = 12, VerticalAlignment = VerticalAlignment.Center,
+                Foreground = new SolidColorBrush(Muted)
+            });
+            actions.Children.Add(_snapCombo);
+            _status.Text = "Showing the newest backup. Pick an earlier date to go back in time.";
+        }
+    }
+
+    private readonly Avalonia.Controls.ComboBox _snapCombo = new() { MinWidth = 150 };
+
+    private void LoadFolder(string dir)
+    {
+        _dir = dir;
+        _all.Clear();
+        _all.AddRange(BackupReader.ScanBackupFolder(dir));
+        RefreshList();
+        if (_all.Count > 0) _list.SelectedIndex = 0;
+        else _chatTitle.Text = "(nothing in this backup)";
+        _current = null;
+        _openWeb.IsEnabled = false;
     }
 
     private ChatSummary? _current;

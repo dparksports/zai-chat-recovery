@@ -147,3 +147,18 @@ showed nothing. Direct `/c/<id>` URLs opened fine. All 23 conversations on
 the affected account were recovered via the API the same evening, and the
 "empty sidebar" class of failure has since repeated across providers
 (ChatGPT, Gemini, Claude) — display bugs, not data loss, are the norm.
+
+## 10. Dated snapshots (time travel)
+
+Backups live under `Documents/Z.ai Backups/<yyyy-MM-dd HHmm>/`, immutable by
+construction — the app only ever creates new snapshots, never edits old ones.
+After each snapshot, a dedup pass replaces files byte-identical to the
+previous snapshot with **hardlinks** (`CreateHardLink` / `link(2)`), so every
+folder stays complete and independent while unchanged content costs no extra
+space. Caveat learned in testing: an in-place edit of a hardlinked file
+propagates to every snapshot sharing it — which is exactly why each snapshot
+carries a `manifest.json` of per-file SHA-256 hashes and why "Check my
+backups" (`--verify`) exists; it caught precisely that case during
+development. Monthly automation is a Task Scheduler job (Windows) or a
+crontab line (macOS/Linux) running `--auto-backup`. Support flags:
+`--manifest <snap>`, `--dedup <new> <prev>`, `--verify <root>`.

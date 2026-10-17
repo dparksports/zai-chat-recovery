@@ -46,8 +46,77 @@ internal static class Program
                 return FetchAttachmentsHeadless(args[i + 1]);
             if (args[i].Equals("--restore", StringComparison.OrdinalIgnoreCase))
                 return RestoreHeadless(args[i + 1]);
+            if (args[i].Equals("--verify", StringComparison.OrdinalIgnoreCase))
+                return VerifyHeadless(args[i + 1]);
+            if (args[i].Equals("--manifest", StringComparison.OrdinalIgnoreCase))
+            {
+                Snapshots.WriteManifest(args[i + 1]);
+                Console.Out.Write("manifest written");
+                return 0;
+            }
+            if (args[i].Equals("--dedup", StringComparison.OrdinalIgnoreCase) && i + 2 < args.Length)
+            {
+                var (linked, saved) = Snapshots.Deduplicate(args[i + 1], args[i + 2]);
+                Console.Out.Write($"linked {linked} files, {saved} bytes shared");
+                return 0;
+            }
+            if (args[i].Equals("--auto-backup", StringComparison.OrdinalIgnoreCase))
+                return AutoBackupHeadless();
         }
+        if (args.Contains("--auto-backup", StringComparer.OrdinalIgnoreCase))
+            return AutoBackupHeadless();
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
+
+    /// <summary>Monthly automatic backup (scheduled): snapshot everything to a new
+    /// dated folder, dedupe against the previous snapshot, write the manifest.</summary>
+    private static int AutoBackupHeadless()
+    {
+        var sb = new StringBuilder();
+        try
+        {
+            if (FindWorkingToken() is null)
+            {
+                sb.AppendLine("result: NO VALID TOKEN (open chat.z.ai, log in; the next scheduled run will retry)");
+                WriteResult("zai-autobackup.txt", sb);
+                return 2;
+            }
+            var prev = Snapshots.Latest();
+            var dir = Snapshots.NextSnapshotDir();
+            Directory.CreateDirectory(dir);
+            var summary = Recovery.RecoverAllAsync(dir, 0, _ => { }, (_, _, _) => Task.CompletedTask).GetAwaiter().GetResult();
+            var (linked, _) = Snapshots.Deduplicate(dir, prev);
+            Snapshots.WriteManifest(dir);
+            try
+            {
+                var settings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ZaiChatRecovery");
+                Directory.CreateDirectory(settings);
+                File.WriteAllText(Path.Combine(settings, "last-backup.txt"), dir);
+            }
+            catch { }
+            sb.AppendLine($"result: OK, {summary.Done} chats, {summary.Attachments} attachments, snapshot {Path.GetFileName(dir)} ({linked} files shared with previous)");
+            WriteResult("zai-autobackup.txt", sb);
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine("result: EXCEPTION " + ex.Message);
+            WriteResult("zai-autobackup.txt", sb);
+            return 3;
+        }
+    }
+
+    private static int VerifyHeadless(string root)
+    {
+        var r = Snapshots.VerifyAll(root);
+        var report = Snapshots.PlainReport(r);
+        WriteResult("zai-verify.txt", new StringBuilder(report + Environment.NewLine + string.Join(Environment.NewLine, r.Problems)));
+        return r.FilesBad == 0 ? 0 : 4;
+    }
+
+    private static void WriteResult(string file, StringBuilder sb)
+    {
+        try { File.WriteAllText(Path.Combine(Path.GetTempPath(), file), sb.ToString()); } catch { }
     }
 
     private static string? FindWorkingToken()
@@ -176,6 +245,8 @@ internal sealed class MainWindow : Window
     private readonly Button _saveBtn = new() { Content = "Save all my chats", Padding = new(14, 8), IsEnabled = false };
     private readonly Button _openBtn = new() { Content = "Open the folder", Padding = new(14, 8), IsEnabled = false };
     private readonly Button _readBtn = new() { Content = "Read my chats", Padding = new(14, 8), IsEnabled = false };
+    private readonly Button _verifyBtn = new() { Content = "Check my backups", Padding = new(14, 8), IsEnabled = false };
+    private readonly CheckBox _autoBox = new() { Content = "Remember for me — back up every month" };
     private string? _backupDir;
     private readonly TextBlock _folderLabel = new() { Foreground = new SolidColorBrush(Muted), TextWrapping = TextWrapping.Wrap };
     private readonly ProgressBar _bar = new() { Height = 16, Minimum = 0, Maximum = 100, Value = 0 };
@@ -206,17 +277,27 @@ internal sealed class MainWindow : Window
         Background = new SolidColorBrush(Bg);
         MinWidth = 900; MinHeight = 640;
 
-        _outDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) is var h && h.Length > 0 ? h
-                : Environment.CurrentDirectory,
-            "Documents",
-            "Recovered chats", DateTime.Now.ToString("yyyy-MM-dd"));
-        _folderLabel.Text = "Chats will be saved to: " + _outDir;
+        _outDir = Snapshots.NextSnapshotDir();
+        _folderLabel.Text = "Backups go to: " + Snapshots.Root + "  (a new dated folder each time — older ones are never touched)";
 
         _checkBtn.Click += async (_, _) => await CheckAsync();
         _saveBtn.Click += async (_, _) => await SaveAsync();
         _openBtn.Click += (_, _) => OpenFolder();
         _readBtn.Click += (_, _) => OpenReader();
+        _verifyBtn.Click += async (_, _) => await VerifyBackupsAsync();
+        _autoBox.IsChecked = Scheduler.IsScheduled();
+        _autoBox.IsCheckedChanged += (_, _) =>
+        {
+            var want = _autoBox.IsChecked == true;
+            if (Scheduler.SetScheduled(want))
+                Log(want ? "Monthly automatic backup scheduled (first of each month, 9 PM)."
+                         : "Automatic backup turned off.");
+            else
+            {
+                _autoBox.IsChecked = !want;
+                Log("Could not change the schedule on this system - monthly backups can still be run by hand.");
+            }
+        };
         Activated += async (_, _) => { if (_autoRescan && !_busy) await CheckAsync(); };
         DetectExistingBackup();
 
@@ -258,13 +339,15 @@ internal sealed class MainWindow : Window
             }
         };
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Children = { _checkBtn, _saveBtn, _readBtn, _openBtn } };
+        var secondRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 18, Margin = new(0, 2, 0, 0), Children = { _verifyBtn, _autoBox } };
+        _autoBox.VerticalAlignment = VerticalAlignment.Center;
         _log.Height = 330;
         var footer = new TextBlock
         {
             Text = "Free and open source (Apache-2.0) · Your saved sign-in never leaves this computer · Requests go to chat.z.ai only",
             Foreground = new SolidColorBrush(Color.Parse("#64748b")), TextWrapping = TextWrapping.Wrap, FontSize = 11
         };
-        return new StackPanel { Spacing = 12, Children = { title, sub, loginReminder, statusBox, buttons, _folderLabel, _bar, _log, footer } };
+        return new StackPanel { Spacing = 12, Children = { title, sub, loginReminder, statusBox, buttons, secondRow, _folderLabel, _bar, _log, footer } };
     }
 
     private Control BuildTipsPanel()
@@ -384,6 +467,9 @@ internal sealed class MainWindow : Window
         _busy = true;
         _checkBtn.IsEnabled = false; _saveBtn.IsEnabled = false;
         _bar.Value = 0;
+        var prev = Snapshots.Latest();
+        _outDir = Snapshots.NextSnapshotDir();
+        Directory.CreateDirectory(_outDir);
         try
         {
             var summary = await Recovery.RecoverAllAsync(_outDir, 0,
@@ -397,13 +483,19 @@ internal sealed class MainWindow : Window
                     });
                     return Task.CompletedTask;
                 });
+            var (linked, savedMb) = Snapshots.Deduplicate(_outDir, prev);
+            Snapshots.WriteManifest(_outDir);
             _openBtn.IsEnabled = true;
-            _backupDir = summary.OutDir;
+            _backupDir = _outDir;
             _readBtn.IsEnabled = true;
-            RememberBackup(summary.OutDir);
-            SetStatus($"All done - {summary.Done} chats saved to your computer.\nThey are also still on the website; the missing list was a display problem.\nPress \"Read my chats\" to read them here, or \"Open the folder\".",
+            _verifyBtn.IsEnabled = true;
+            RememberBackup(_outDir);
+            SetStatus($"All done - {summary.Done} chats saved as backup \"{Path.GetFileName(_outDir)}\".\nOlder backups are untouched, so you can always go back to them.\nPress \"Read my chats\" to read them here.",
                 new SolidColorBrush(Good));
-            Log($"Done. {summary.Done} chats, {summary.Failed} failed. Folder: {summary.OutDir}");
+            Log($"Done. {summary.Done} chats, {summary.Failed} failed. Backup folder: {_outDir}");
+            if (prev is not null)
+                Log($"  {linked} unchanged files shared with the previous backup (no extra space used).");
+            Log("  Integrity manifest written (manifest.json).");
         }
         catch (Exception ex)
         {
@@ -413,6 +505,23 @@ internal sealed class MainWindow : Window
         }
         _checkBtn.IsEnabled = true; _saveBtn.IsEnabled = true;
         _busy = false;
+    }
+
+    private async Task VerifyBackupsAsync()
+    {
+        if (_backupDir is null) return;
+        _verifyBtn.IsEnabled = false;
+        SetStatus("Checking every backup against its integrity list…", new SolidColorBrush(Muted));
+        var root = Snapshots.List(Path.GetDirectoryName(_backupDir)).Count > 0
+            ? Path.GetDirectoryName(_backupDir)!
+            : _backupDir;
+        var result = await Task.Run(() => Snapshots.VerifyAll(root));
+        var good = result.FilesBad == 0;
+        SetStatus(Snapshots.PlainReport(result),
+            new SolidColorBrush(good ? Good : Bad));
+        foreach (var p in result.Problems) Log("  " + p);
+        Log($"Check finished: {result.FilesOk} files OK, {result.FilesBad} problems, {result.Snapshots} backup(s).");
+        _verifyBtn.IsEnabled = true;
     }
 
     private void OpenFolder()
@@ -440,12 +549,22 @@ internal sealed class MainWindow : Window
         try { Directory.CreateDirectory(SettingsDir); File.WriteAllText(LastBackupFile, dir); } catch { }
     }
 
-    /// <summary>Find a backup made by a previous run: the remembered one, or the newest
-    /// "Recovered chats" folder in Documents. Enables "Read my chats" at startup.</summary>
+    /// <summary>Find a backup made by a previous run: the newest dated snapshot
+    /// under Z.ai Backups, the remembered one, or a legacy "Recovered chats"
+    /// folder. Enables "Read my chats" and "Check my backups" at startup.</summary>
     private void DetectExistingBackup()
     {
         try
         {
+            var latest = Snapshots.Latest();
+            if (latest is not null)
+            {
+                _backupDir = latest;
+                _readBtn.IsEnabled = true;
+                _verifyBtn.IsEnabled = true;
+                Log($"Found your backups: {Snapshots.Root} ({Path.GetFileName(latest)} is the newest)");
+                return;
+            }
             if (File.Exists(LastBackupFile))
             {
                 var dir = File.ReadAllText(LastBackupFile).Trim();
