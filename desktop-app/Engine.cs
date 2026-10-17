@@ -9,6 +9,7 @@
 
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 namespace ZaiChatRecovery.Desktop;
@@ -286,9 +287,9 @@ internal static class Recovery
         catch { return DateTimeOffset.FromUnixTimeSeconds(unixSeconds.Value).UtcDateTime.ToString("yyyy-MM-dd HH:mm"); }
     }
 
-    private static string PtTimeMs(long v) => v == 0 ? "" : PtTime(v > 1_000_000_000_000 ? v / 1000 : v);
+    internal static string PtTimeMs(long v) => v == 0 ? "" : PtTime(v > 1_000_000_000_000 ? v / 1000 : v);
 
-    private static (string vis, string think) BlocksToText(JsonElement? blocks)
+    internal static (string vis, string think) BlocksToText(JsonElement? blocks)
     {
         var vis = new List<string>();
         var think = new List<string>();
@@ -307,7 +308,7 @@ internal static class Recovery
         return (string.Join("\n\n", vis), string.Join("\n\n", think));
     }
 
-    private static List<string> Linearize(Dictionary<string, JsonElement> messages)
+    internal static List<string> Linearize(Dictionary<string, JsonElement> messages)
     {
         var children = new Dictionary<string, List<string>>(); // "" = no parent
         foreach (var (k, m) in messages)
@@ -363,6 +364,7 @@ internal static class Recovery
         var order = Linearize(messages);
         string fname = $"{SafeName(title)}__{id[..8]}.md";
         int n = 0;
+        var views = new List<(string role, string stamp, string vis, string think)>();
         var sb = new StringBuilder();
         sb.AppendLine($"# {title}").AppendLine();
         sb.AppendLine($"- id: {id}");
@@ -381,12 +383,28 @@ internal static class Recovery
             if (vis.Length == 0 && think.Length == 0) continue;
             n++;
             string stamp = m.TryGetProperty("timestamp", out var ts) ? PtTimeMs(ts.GetInt64()) : "";
+            views.Add((role.ToUpperInvariant(), stamp, vis, think));
             sb.AppendLine($"## {role.ToUpper()}{(stamp.Length > 0 ? "  (" + stamp + ")" : "")}").AppendLine();
             if (think.Length > 0)
                 sb.AppendLine($"<details><summary>thinking</summary>\n\n{think[..Math.Min(4000, think.Length)]}\n\n</details>").AppendLine();
             if (vis.Length > 0) sb.AppendLine(vis).AppendLine();
         }
         await File.WriteAllTextAsync(Path.Combine(outDir, fname), sb.ToString());
+
+        // enriched <id>.json: same transcript as the .md, structured for the reader
+        var arr = new JsonArray();
+        foreach (var (r3, st, v3, th) in views)
+            arr.Add(new JsonObject { ["role"] = r3, ["stamp"] = st, ["text"] = v3, ["thinking"] = th });
+        await File.WriteAllTextAsync(Path.Combine(outDir, $"{id}.json"),
+            new JsonObject
+            {
+                ["schema"] = "zai-recovery/1",
+                ["id"] = id,
+                ["title"] = title,
+                ["updated_at"] = meta.TryGetProperty("updated_at", out var ua3) && ua3.ValueKind == JsonValueKind.Number ? ua3.GetInt64() : 0,
+                ["messages"] = arr,
+            }.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+
         return (fname, n);
     }
 
@@ -413,8 +431,6 @@ internal static class Recovery
             try
             {
                 var detail = await GetChatDetailAsync(id);
-                await File.WriteAllTextAsync(Path.Combine(outDir, $"{id}.json"),
-                    JsonSerializer.Serialize(detail, new JsonSerializerOptions { WriteIndented = true }));
                 var (fname, n) = await RenderChatAsync(c, detail, outDir);
                 done++;
                 string upd = PtTimeMs(c.TryGetProperty("updated_at", out var u) ? u.GetInt64() : 0);
@@ -434,5 +450,153 @@ internal static class Recovery
         await File.WriteAllTextAsync(Path.Combine(outDir, "chat-urls.md"),
             "# Direct chat URLs\n\n| # | Title | Updated | URL |\n|---|---|---|---|\n" + string.Join("\n", urlLines) + "\n");
         return new RecoverySummary(done, failed, outDir, mostRecent);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// backup reader - loads ANY existing backup folder (app or python CLI format)
+// ---------------------------------------------------------------------------
+
+internal sealed record ChatSummary(string Id, string Title, string UpdatedText, int Messages, string JsonPath);
+
+internal sealed record MessageView(string Role, string Stamp, string Text, string Thinking);
+
+internal static class BackupReader
+{
+    /// <summary>Scan a backup folder for chat JSONs (skips index files).</summary>
+    public static List<ChatSummary> ScanBackupFolder(string dir)
+    {
+        var list = new List<ChatSummary>();
+        foreach (var f in Directory.GetFiles(dir, "*.json"))
+        {
+            var name = Path.GetFileName(f);
+            if (name.StartsWith("_") || name.StartsWith("INDEX", StringComparison.OrdinalIgnoreCase)
+                                     || name.StartsWith("chat-urls", StringComparison.OrdinalIgnoreCase))
+                continue;
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(f));
+                var r = doc.RootElement;
+                if (r.ValueKind != JsonValueKind.Object || !r.TryGetProperty("id", out _))
+                    continue;
+                string id = r.GetProperty("id").GetString() ?? Path.GetFileNameWithoutExtension(f);
+                string title = r.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String
+                    ? t.GetString() ?? "(untitled)" : "(untitled)";
+                long upd = r.TryGetProperty("updated_at", out var u) && u.ValueKind == JsonValueKind.Number
+                    ? u.GetInt64() : 0;
+                int count = 0;
+                if (r.TryGetProperty("messages", out var ms))
+                {
+                    if (ms.ValueKind == JsonValueKind.Array) count = ms.GetArrayLength();
+                    else if (ms.ValueKind == JsonValueKind.Object) count = ms.EnumerateObject().Count();
+                }
+                else if (r.TryGetProperty("chat", out var ch) && ch.TryGetProperty("history", out var h)
+                         && h.TryGetProperty("messages", out var m2) && m2.ValueKind == JsonValueKind.Object)
+                    count = m2.EnumerateObject().Count();
+                list.Add(new ChatSummary(id, title, Recovery.PtTimeMs(upd), count, f));
+            }
+            catch (Exception) { /* not one of ours */ }
+        }
+        return list.OrderByDescending(s => s.UpdatedText).ToList();
+    }
+
+    /// <summary>Load one chat's transcript: new schema, python schema, or md fallback.</summary>
+    public static List<MessageView> LoadChat(ChatSummary s)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(s.JsonPath));
+            var r = doc.RootElement;
+            if (r.TryGetProperty("messages", out var ms) && ms.ValueKind == JsonValueKind.Array)
+            {
+                var views = new List<MessageView>();
+                foreach (var m in ms.EnumerateArray())
+                {
+                    string role = m.TryGetProperty("role", out var ro) ? ro.GetString() ?? "" : "";
+                    string stamp = m.TryGetProperty("stamp", out var st) ? st.GetString() ?? "" : "";
+                    string text = m.TryGetProperty("text", out var tx) ? tx.GetString() ?? "" : "";
+                    string think = m.TryGetProperty("thinking", out var th) ? th.GetString() ?? "" : "";
+                    if (text.Length == 0 && think.Length == 0) continue;
+                    views.Add(new MessageView(role, stamp, text, think));
+                }
+                if (views.Count > 0) return views;
+            }
+            if (r.TryGetProperty("chat", out var chat) && chat.TryGetProperty("history", out var hist)
+                && hist.TryGetProperty("messages", out var tree) && tree.ValueKind == JsonValueKind.Object)
+            {
+                var messages = new Dictionary<string, JsonElement>();
+                foreach (var p in tree.EnumerateObject())
+                    messages[p.Name] = JsonSerializer.Deserialize<JsonElement>(p.Value.GetRawText());
+                var views = new List<MessageView>();
+                foreach (var k in Recovery.Linearize(messages))
+                {
+                    if (!messages.TryGetValue(k, out var m)) continue;
+                    string role = m.TryGetProperty("role", out var ro) ? (ro.GetString() ?? "?").ToUpperInvariant() : "?";
+                    string stamp = m.TryGetProperty("timestamp", out var ts) ? Recovery.PtTimeMs(ts.GetInt64()) : "";
+                    JsonElement? blocks = null;
+                    if (m.TryGetProperty("content_detail", out var cd) && cd.ValueKind == JsonValueKind.Object
+                        && cd.TryGetProperty("content_blocks", out var cb)) blocks = cb;
+                    else if (m.TryGetProperty("content_blocks", out var cb2)) blocks = cb2;
+                    var (vis, think) = Recovery.BlocksToText(blocks);
+                    if (vis.Length == 0 && m.TryGetProperty("content", out var c2) && c2.ValueKind == JsonValueKind.String)
+                        vis = c2.GetString() ?? "";
+                    if (vis.Length == 0 && think.Length == 0) continue;
+                    views.Add(new MessageView(role, stamp, vis, think));
+                }
+                if (views.Count > 0) return views;
+            }
+        }
+        catch (Exception) { }
+        // fall back to the markdown twin (our own format, trivially parseable)
+        var md = FindMdFor(Path.GetDirectoryName(s.JsonPath) ?? ".", s.Id);
+        return md is null ? new List<MessageView>() : ParseMdFile(md);
+    }
+
+    private static string? FindMdFor(string dir, string id)
+    {
+        var byId = Directory.GetFiles(dir, "*" + id[..Math.Min(8, id.Length)] + "*.md");
+        return byId.FirstOrDefault();
+    }
+
+    /// <summary>Parse our own markdown transcript format back into message views.</summary>
+    public static List<MessageView> ParseMdFile(string path)
+    {
+        var views = new List<MessageView>();
+        string? role = null, stamp = null;
+        var body = new StringBuilder();
+        var think = new StringBuilder();
+        bool inThink = false;
+        foreach (var rawLine in File.ReadAllLines(path))
+        {
+            var line = rawLine.TrimEnd();
+            if (line.StartsWith("## "))
+            {
+                Flush();
+                var header = line[3..].Trim();
+                int paren = header.IndexOf("  (", StringComparison.Ordinal);
+                if (paren > 0)
+                {
+                    stamp = header[(paren + 3)..].TrimEnd(')');
+                    role = header[..paren].Trim();
+                }
+                else { role = header; stamp = ""; }
+                body.Clear(); think.Clear();
+                continue;
+            }
+            if (line.StartsWith("<details>", StringComparison.OrdinalIgnoreCase)) { inThink = true; continue; }
+            if (line.StartsWith("</details>", StringComparison.OrdinalIgnoreCase)) { inThink = false; continue; }
+            if (inThink && line.StartsWith("<summary>", StringComparison.OrdinalIgnoreCase)) continue;
+            if (inThink) think.AppendLine(line);
+            else if (role is not null) body.AppendLine(line);
+        }
+        Flush();
+        return views;
+
+        void Flush()
+        {
+            if (role is not null && (body.Length > 0 || think.Length > 0))
+                views.Add(new MessageView(role, stamp ?? "", body.ToString().Trim(), think.ToString().Trim()));
+            body ??= new StringBuilder();
+        }
     }
 }

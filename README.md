@@ -69,6 +69,19 @@ three operating systems. An earlier Windows/WinForms app is superseded by this o
 
 ![How it works](assets/how-it-works.svg)
 
+## Reading your recovered chats in the app
+
+The desktop app now includes a **reader**: after saving (or at any later
+launch - it remembers your last backup and can open any backup folder made
+by an earlier version or by the Python CLI). Click **Read my chats** for a
+searchable list of every conversation, rendered as chat bubbles with
+timestamps, collapsed "assistant thinking" sections, and an
+**Open on chat.z.ai** button per chat. You can also start it directly:
+
+```
+ZaiChatRecovery --open-reader <backup-folder>
+```
+
 ## Keep your sessions recoverable
 
 ![Do and don't](assets/do-dont-tips.svg)

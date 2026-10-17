@@ -20,6 +20,8 @@ namespace ZaiChatRecovery.Desktop;
 
 internal static class Program
 {
+    internal static string? ReaderPath;
+
     static Program()
     {
         // never fail silently: WinExe crashes leave no console behind
@@ -36,6 +38,9 @@ internal static class Program
     {
         if (args.Contains("--selftest", StringComparer.OrdinalIgnoreCase))
             return SelfTest.Run();
+        for (int i = 0; i < args.Length - 1; i++)
+            if (args[i].Equals("--open-reader", StringComparison.OrdinalIgnoreCase))
+                ReaderPath = args[i + 1];
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
@@ -62,7 +67,12 @@ internal sealed class App : Application
     {
         if (ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
         {
-            try { desktop.MainWindow = new MainWindow(); }
+            try
+            {
+                desktop.MainWindow = Program.ReaderPath is { Length: > 0 } p && Directory.Exists(p)
+                    ? new ReaderWindow(p)
+                    : new MainWindow();
+            }
             catch (Exception ex) { Program.WriteCrash(ex); throw; }
         }
         base.OnFrameworkInitializationCompleted();
@@ -86,6 +96,8 @@ internal sealed class MainWindow : Window
     private readonly Button _checkBtn = new() { Content = "Check my chats", Padding = new(14, 8) };
     private readonly Button _saveBtn = new() { Content = "Save all my chats", Padding = new(14, 8), IsEnabled = false };
     private readonly Button _openBtn = new() { Content = "Open the folder", Padding = new(14, 8), IsEnabled = false };
+    private readonly Button _readBtn = new() { Content = "Read my chats", Padding = new(14, 8), IsEnabled = false };
+    private string? _backupDir;
     private readonly TextBlock _folderLabel = new() { Foreground = new SolidColorBrush(Muted), TextWrapping = TextWrapping.Wrap };
     private readonly ProgressBar _bar = new() { Height = 16, Minimum = 0, Maximum = 100, Value = 0 };
     private readonly TextBox _log = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap };
@@ -125,7 +137,9 @@ internal sealed class MainWindow : Window
         _checkBtn.Click += async (_, _) => await CheckAsync();
         _saveBtn.Click += async (_, _) => await SaveAsync();
         _openBtn.Click += (_, _) => OpenFolder();
+        _readBtn.Click += (_, _) => OpenReader();
         Activated += async (_, _) => { if (_autoRescan && !_busy) await CheckAsync(); };
+        DetectExistingBackup();
 
         var root = new Grid { ColumnDefinitions = new("*, 300"), Margin = new(20) };
         root.Children.Add(BuildLeftPanel());
@@ -164,7 +178,7 @@ internal sealed class MainWindow : Window
                 Foreground = new SolidColorBrush(Text)
             }
         };
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Children = { _checkBtn, _saveBtn, _openBtn } };
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Children = { _checkBtn, _saveBtn, _readBtn, _openBtn } };
         _log.Height = 330;
         var footer = new TextBlock
         {
@@ -305,7 +319,10 @@ internal sealed class MainWindow : Window
                     return Task.CompletedTask;
                 });
             _openBtn.IsEnabled = true;
-            SetStatus($"All done - {summary.Done} chats saved to your computer.\nThey are also still on the website; the missing list was a display problem.\nPress \"Open the folder\" to read them.",
+            _backupDir = summary.OutDir;
+            _readBtn.IsEnabled = true;
+            RememberBackup(summary.OutDir);
+            SetStatus($"All done - {summary.Done} chats saved to your computer.\nThey are also still on the website; the missing list was a display problem.\nPress \"Read my chats\" to read them here, or \"Open the folder\".",
                 new SolidColorBrush(Good));
             Log($"Done. {summary.Done} chats, {summary.Failed} failed. Folder: {summary.OutDir}");
         }
@@ -332,6 +349,57 @@ internal sealed class MainWindow : Window
                 System.Diagnostics.Process.Start("xdg-open", _outDir);
         }
         catch (Exception ex) { Log("Could not open folder: " + ex.Message); }
+    }
+
+    private static string SettingsDir =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ZaiChatRecovery");
+
+    private static string LastBackupFile => Path.Combine(SettingsDir, "last-backup.txt");
+
+    private static void RememberBackup(string dir)
+    {
+        try { Directory.CreateDirectory(SettingsDir); File.WriteAllText(LastBackupFile, dir); } catch { }
+    }
+
+    /// <summary>Find a backup made by a previous run: the remembered one, or the newest
+    /// "Recovered chats" folder in Documents. Enables "Read my chats" at startup.</summary>
+    private void DetectExistingBackup()
+    {
+        try
+        {
+            if (File.Exists(LastBackupFile))
+            {
+                var dir = File.ReadAllText(LastBackupFile).Trim();
+                if (Directory.Exists(dir) && Directory.GetFiles(dir, "*.json").Length > 0)
+                {
+                    _backupDir = dir;
+                    _readBtn.IsEnabled = true;
+                    Log($"Found your earlier backup: {dir}");
+                    return;
+                }
+            }
+            var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Recovered chats");
+            if (Directory.Exists(root))
+            {
+                var newest = Directory.GetDirectories(root)
+                    .Where(d => Directory.GetFiles(d, "*.json").Length > 0)
+                    .OrderByDescending(d => Directory.GetLastWriteTimeUtc(d))
+                    .FirstOrDefault();
+                if (newest is { } n)
+                {
+                    _backupDir = n;
+                    _readBtn.IsEnabled = true;
+                    Log($"Found your earlier backup: {n}");
+                }
+            }
+        }
+        catch { }
+    }
+
+    private void OpenReader()
+    {
+        if (_backupDir is null || !Directory.Exists(_backupDir)) return;
+        new ReaderWindow(_backupDir).Show(this);
     }
 }
 
