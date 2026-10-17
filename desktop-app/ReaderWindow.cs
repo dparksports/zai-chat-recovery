@@ -3,6 +3,7 @@
 // In-app reader for recovered chats. Loads any backup folder (app or python
 // CLI format) and renders each conversation as a chat transcript.
 
+using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
@@ -29,7 +30,10 @@ internal sealed class ReaderWindow : Window
     private readonly TextBlock _chatTitle = new() { FontSize = 18, FontWeight = FontWeight.Bold, Foreground = new SolidColorBrush(Text), TextWrapping = TextWrapping.Wrap };
     private readonly Button _openWeb = new() { Content = "Open on chat.z.ai", Padding = new(12, 6), IsEnabled = false };
     private readonly Button _fetchBtn = new() { Content = "Fetch attachments", Padding = new(12, 6) };
+    private readonly Button _pasteBtn = new() { Content = "Continue by paste", Padding = new(12, 6) };
+    private readonly Button _restoreBtn = new() { Content = "Restore to my account…", Padding = new(12, 6) };
     private readonly TextBlock _status = new() { FontSize = 11, Foreground = new SolidColorBrush(Muted), TextWrapping = TextWrapping.Wrap };
+    private List<MessageView> _currentViews = new();
     private readonly StackPanel _msgs = new() { Spacing = 10 };
     private readonly ScrollViewer _scroller = new();
 
@@ -60,6 +64,12 @@ internal sealed class ReaderWindow : Window
         _search.TextChanged += (_, _) => RefreshList();
 
         _fetchBtn.Click += async (_, _) => await FetchCurrentAsync();
+        _pasteBtn.Click += async (_, _) => await PasteContinueAsync();
+        _restoreBtn.Click += async (_, _) => await RestoreAsync();
+
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new(0, 6, 0, 0) };
+        actions.Children.Add(_pasteBtn);
+        actions.Children.Add(_restoreBtn);
 
         var titleHost = new ContentControl { Content = _chatTitle, HorizontalAlignment = HorizontalAlignment.Stretch };
         _openWeb.Click += (_, _) =>
@@ -133,12 +143,14 @@ internal sealed class ReaderWindow : Window
         Grid.SetRow(_search, 2);
         root.Children.Add(topGrid);
         Grid.SetRow(topGrid, 3);
+        root.Children.Add(actions);
+        Grid.SetRow(actions, 4);
         root.Children.Add(_status);
         _status.Margin = new(0, 4, 0, 0);
-        Grid.SetRow(_status, 4);
+        Grid.SetRow(_status, 5);
         root.Children.Add(body);
-        Grid.SetRow(body, 5);
-        root.RowDefinitions = new("Auto,Auto,Auto,Auto,Auto,*");
+        Grid.SetRow(body, 6);
+        root.RowDefinitions = new("Auto,Auto,Auto,Auto,Auto,Auto,*");
         Content = root;
         RefreshList();
         if (_all.Count > 0) _list.SelectedIndex = 0;
@@ -160,6 +172,7 @@ internal sealed class ReaderWindow : Window
     {
         _current = s;
         var views = BackupReader.LoadChat(s);
+        _currentViews = views;
         _chatTitle.Text = s.Title + $"   ({views.Count} messages)";
         _openWeb.IsEnabled = true;
         _msgs.Children.Clear();
@@ -316,8 +329,7 @@ internal sealed class ReaderWindow : Window
         catch { }
     }
 
-    private async Task FetchCurrentAsync()
-    {
+    private async Task FetchCurrentAsync()    {
         if (_current is not { } cur) { _status.Text = "Select a chat first."; return; }
         _fetchBtn.IsEnabled = false;
         try
@@ -375,6 +387,81 @@ internal sealed class ReaderWindow : Window
             }
             if (p.Trim().Length > 0) yield return new Segment(p, code);
         }
+    }
+
+    private async Task PasteContinueAsync()
+    {
+        if (_current is not { } cur) return;
+        try
+        {
+            var text = BuildPasteText(cur.Title, _currentViews);
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard is null)
+            {
+                _status.Text = "Clipboard is not available on this system.";
+                return;
+            }
+            await clipboard.SetTextAsync(text);
+            OpenUrl("https://chat.z.ai/");
+            _status.Text = "Conversation copied. Paste it into the new chat that just opened, and continue where you left off.";
+        }
+        catch (Exception ex) { _status.Text = "Could not copy: " + ex.Message; }
+    }
+
+    internal static string BuildPasteText(string title, List<MessageView> views)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Below is a saved conversation from my Z.ai chat history. Treat it as context and continue from where it left off.");
+        sb.AppendLine();
+        sb.AppendLine("# " + title);
+        foreach (var v in views)
+        {
+            if (v.Text.Trim().Length == 0) continue;
+            sb.AppendLine();
+            sb.AppendLine(v.Role.Contains("USER", StringComparison.OrdinalIgnoreCase) ? "Me:" : "GLM:");
+            sb.AppendLine(v.Text.Trim());
+        }
+        if (sb.Length > 28000) sb.Length = 28000;
+        return sb.ToString();
+    }
+
+    private async Task RestoreAsync()
+    {
+        if (_current is not { } cur) return;
+        var ok = await ConfirmBox.ShowAsync(this, "Restore this chat to your account?",
+            $"This creates a copy of \"{cur.Title}\" as a new chat in your z.ai account.\n\n" +
+            "This is the ONLY thing this app can ever write to your account, and it never deletes or changes anything else. " +
+            "The copy will appear as \"New Chat\" - rename it after opening.\n\nContinue?");
+        if (!ok) return;
+        _restoreBtn.IsEnabled = false;
+        try
+        {
+            if (Recovery.Token is null)
+            {
+                _status.Text = "Looking for your saved sign-in…";
+                var found = false;
+                foreach (var c in await Task.Run(Recovery.FindTokenCandidates))
+                {
+                    if (c.Email.StartsWith("guest-", StringComparison.Ordinal)) continue;
+                    if (await Task.Run(() => Recovery.TryUseTokenAsync(c.Token).GetAwaiter().GetResult()))
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    _status.Text = "No working sign-in - open chat.z.ai in your browser, log in, then try again.";
+                    return;
+                }
+            }
+            _status.Text = "Restoring to your account…";
+            var (newId, n) = await Task.Run(() => Recovery.RestoreToAccountAsync(cur.JsonPath).GetAwaiter().GetResult());
+            _status.Text = $"Restored as a new chat ({n} messages). Opening it…";
+            OpenUrl("https://chat.z.ai/c/" + newId);
+        }
+        catch (Exception ex) { _status.Text = "Could not restore: " + ex.Message; }
+        finally { _restoreBtn.IsEnabled = true; }
     }
 
     private static void OpenUrl(string url)

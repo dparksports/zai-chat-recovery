@@ -116,6 +116,72 @@ internal static class Recovery
     public static string? AccountEmail { get; private set; }
     public static string LastAuthError { get; private set; } = "";
 
+    /// <summary>Restore a backed-up chat into the z.ai account as a NEW chat
+    /// (POST /chats/import - the only write this app can ever perform, and only
+    /// behind an explicit user confirmation). Returns the new chat id.</summary>
+    public static async Task<(string newId, int messages)> RestoreToAccountAsync(string jsonPath)
+    {
+        if (Token is null) throw new InvalidOperationException("no valid sign-in");
+        using var doc = JsonDocument.Parse(File.ReadAllText(jsonPath));
+        var r = doc.RootElement;
+        JsonObject payload;
+        int count;
+        if (r.TryGetProperty("chat", out var chatEl) && chatEl.ValueKind == JsonValueKind.Object)
+        {
+            // python-schema backup: pass the whole object through (it contains the tree)
+            payload = JsonNode.Parse(r.GetRawText())!.AsObject();
+            count = chatEl.TryGetProperty("history", out var h)
+                    && h.TryGetProperty("messages", out var ms) && ms.ValueKind == JsonValueKind.Object
+                ? ms.EnumerateObject().Count() : 0;
+        }
+        else if (r.TryGetProperty("messages", out var arr) && arr.ValueKind == JsonValueKind.Array)
+        {
+            // enriched v2 backup: synthesize an Open WebUI message tree from the linear list
+            var tree = new JsonObject();
+            var ids = new List<string>();
+            foreach (var m in arr.EnumerateArray())
+            {
+                string mid = Guid.NewGuid().ToString();
+                ids.Add(mid);
+                tree[mid] = new JsonObject
+                {
+                    ["id"] = mid,
+                    ["parentId"] = null as string,
+                    ["childrenIds"] = new JsonArray(),
+                    ["role"] = m.TryGetProperty("role", out var ro) && ro.ValueKind == JsonValueKind.String
+                        ? ro.GetString() : "user",
+                    ["content"] = m.TryGetProperty("text", out var tx) && tx.ValueKind == JsonValueKind.String
+                        ? tx.GetString() : "",
+                    ["timestamp"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                };
+            }
+            for (int i = 0; i < ids.Count; i++)
+            {
+                var node = tree[ids[i]]!.AsObject();
+                if (i > 0) node["parentId"] = ids[i - 1];
+                if (i < ids.Count - 1) node["childrenIds"] = new JsonArray(ids[i + 1]);
+            }
+            payload = new JsonObject
+            {
+                ["title"] = r.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String
+                    ? t.GetString() : "Recovered chat",
+                ["chat"] = new JsonObject
+                {
+                    ["history"] = new JsonObject { ["messages"] = tree },
+                },
+            };
+            count = ids.Count;
+        }
+        else throw new InvalidOperationException("unrecognized backup format");
+
+        var raw = await ApiSendAsync(HttpMethod.Post, "/chats/import", payload.ToJsonString(), Token!);
+        using var resp = JsonDocument.Parse(raw);
+        string newId = resp.RootElement.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.String
+            ? idEl.GetString()! : "";
+        if (newId.Length == 0) throw new HttpRequestException("import response did not include a chat id");
+        return (newId, count);
+    }
+
     // ---- token discovery ---------------------------------------------------
 
     private static string? JwtEmail(string tok)

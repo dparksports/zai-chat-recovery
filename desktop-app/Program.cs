@@ -44,8 +44,45 @@ internal static class Program
                 ReaderPath = args[i + 1];
             if (args[i].Equals("--fetch-attachments", StringComparison.OrdinalIgnoreCase))
                 return FetchAttachmentsHeadless(args[i + 1]);
+            if (args[i].Equals("--restore", StringComparison.OrdinalIgnoreCase))
+                return RestoreHeadless(args[i + 1]);
         }
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
+
+    private static string? FindWorkingToken()
+    {
+        foreach (var c in Recovery.FindTokenCandidates())
+        {
+            if (c.Email.StartsWith("guest-", StringComparison.Ordinal)) continue;
+            if (Recovery.TryUseTokenAsync(c.Token).GetAwaiter().GetResult())
+                return c.Token;
+        }
+        return null;
+    }
+
+    private static int RestoreHeadless(string jsonPath)
+    {
+        var sb = new StringBuilder();
+        try
+        {
+            if (FindWorkingToken() is null)
+            {
+                sb.AppendLine("result: NO VALID TOKEN");
+                File.WriteAllText(Path.Combine(Path.GetTempPath(), "zai-restore.txt"), sb.ToString());
+                return 2;
+            }
+            var (newId, n) = Recovery.RestoreToAccountAsync(jsonPath).GetAwaiter().GetResult();
+            sb.AppendLine($"result: OK, restored as chat {newId} ({n} messages)");
+            File.WriteAllText(Path.Combine(Path.GetTempPath(), "zai-restore.txt"), sb.ToString());
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine("result: EXCEPTION " + ex.Message);
+            File.WriteAllText(Path.Combine(Path.GetTempPath(), "zai-restore.txt"), sb.ToString());
+            return 3;
+        }
     }
 
     private static int FetchAttachmentsHeadless(string jsonPath)
