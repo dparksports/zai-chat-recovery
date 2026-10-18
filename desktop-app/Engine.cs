@@ -671,6 +671,7 @@ internal static class Recovery
         log($"Found {sorted.Count} conversations.");
         var indexLines = new List<string>();
         var urlLines = new List<string>();
+        var pageEntries = new List<ReopenPage.Entry>();
         int done = 0, failed = 0, i = 0, totalAtt = 0;
         string mostRecent = "";
         foreach (var c in sorted)
@@ -679,21 +680,24 @@ internal static class Recovery
             string id = c.GetProperty("id").GetString()!;
             string title = c.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() ?? "untitled" : "untitled";
             if (mostRecent.Length == 0) mostRecent = title;
+            string upd = PtTimeMs(c.TryGetProperty("updated_at", out var u) ? u.GetInt64() : 0);
             try
             {
                 var detail = await GetChatDetailAsync(id);
                 var (fname, n, nAtt) = await RenderChatAsync(c, detail, outDir);
                 done++;
                 totalAtt += nAtt;
-                string upd = PtTimeMs(c.TryGetProperty("updated_at", out var u) ? u.GetInt64() : 0);
                 indexLines.Add($"- [{title}]({fname}) - {n} messages, updated {upd}");
                 urlLines.Add($"| {i} | {title} | {upd} | https://chat.z.ai/c/{id} |");
+                pageEntries.Add(new ReopenPage.Entry(id, title, upd, $"{n} messages", null));
                 await progress(i, sorted.Count, title + (nAtt > 0 ? $" ({nAtt} attachments)" : ""));
             }
             catch (Exception ex)
             {
                 failed++;
                 log($"FAILED {id[..8]}: {ex.Message}");
+                // still reopenable on the website, so it still belongs on the page
+                pageEntries.Add(new ReopenPage.Entry(id, title, upd, null, null));
             }
             await Task.Delay(400);
         }
@@ -701,6 +705,9 @@ internal static class Recovery
             $"# Recovered z.ai conversations ({done} chats)\n\nAccount: {AccountEmail}\n\n" + string.Join("\n", indexLines) + "\n");
         await File.WriteAllTextAsync(Path.Combine(outDir, "chat-urls.md"),
             "# Direct chat URLs\n\n| # | Title | Updated | URL |\n|---|---|---|---|\n" + string.Join("\n", urlLines) + "\n");
+        await File.WriteAllTextAsync(Path.Combine(outDir, "reopen-chats.html"),
+            ReopenPage.Build(AccountEmail, pageEntries));
+        log("Wrote reopen-chats.html - the one-click page that reopens every chat on the website.");
         return new RecoverySummary(done, failed, outDir, mostRecent, totalAtt);
     }
 }

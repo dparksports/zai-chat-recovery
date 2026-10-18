@@ -2,7 +2,7 @@
   <rect width="1200" height="560" rx="16" fill="#F5F5F7"/>
   <g font-family="Segoe UI, system-ui, -apple-system, sans-serif">
     <text x="600" y="60" fill="#1D1D1F" font-size="32" font-weight="700" text-anchor="middle">Read your chats — right in the app</text>
-    <text x="600" y="94" fill="#86868B" font-size="18" text-anchor="middle">Click "Read my chats". No files to dig through.</text>
+    <text x="600" y="94" fill="#86868B" font-size="18" text-anchor="middle">Open the "Read my chats" tab. No files to dig through.</text>
 
     <!-- simple mock: list + one conversation -->
     <rect x="90" y="130" width="700" height="380" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>

@@ -54,6 +54,8 @@ internal static class Program
                 Console.Out.Write("manifest written");
                 return 0;
             }
+            if (args[i].Equals("--reopen-page", StringComparison.OrdinalIgnoreCase))
+                return ReopenPageHeadless(args[i + 1]);
             if (args[i].Equals("--dedup", StringComparison.OrdinalIgnoreCase) && i + 2 < args.Length)
             {
                 var (linked, saved) = Snapshots.Deduplicate(args[i + 1], args[i + 2]);
@@ -112,6 +114,26 @@ internal static class Program
         var report = Snapshots.PlainReport(r);
         WriteResult("zai-verify.txt", new StringBuilder(report + Environment.NewLine + string.Join(Environment.NewLine, r.Problems)));
         return r.FilesBad == 0 ? 0 : 4;
+    }
+
+    /// <summary>Build the reopen page for any backup folder (uniting every
+    /// chat id across its sibling snapshots) without touching the snapshots:
+    /// written to a temp file whose path is left in zai-reopenpage.txt.</summary>
+    private static int ReopenPageHeadless(string folder)
+    {
+        try
+        {
+            var entries = ReopenPage.UnionFor(folder);
+            var path = ReopenPage.WriteToTemp(Recovery.AccountEmail, entries);
+            WriteResult("zai-reopenpage.txt", new StringBuilder(path + Environment.NewLine + $"{entries.Count} chats"));
+            try { Console.Out.Write(path); } catch { /* WinExe may have no console */ }
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            WriteResult("zai-reopenpage.txt", new StringBuilder("EXCEPTION " + ex.Message));
+            return 3;
+        }
     }
 
     private static void WriteResult(string file, StringBuilder sb)
@@ -193,7 +215,15 @@ internal static class Program
     }
 
     public static AppBuilder BuildAvaloniaApp()
-        => AppBuilder.Configure<App>().UsePlatformDetect().LogToTrace();
+    {
+        var b = AppBuilder.Configure<App>().UsePlatformDetect().LogToTrace();
+        // Windows: pin Segoe UI (ships with every 10/11). macOS/Linux keep the
+        // native system default (SF Pro / the distro's UI font) - overriding
+        // there risks missing-family tofu for no visual gain.
+        if (OperatingSystem.IsWindows())
+            b = b.With(new Avalonia.Media.FontManagerOptions { DefaultFamilyName = "Segoe UI" });
+        return b;
+    }
 }
 
 internal sealed class App : Application
@@ -229,33 +259,33 @@ internal sealed class App : Application
 
 internal sealed class MainWindow : Window
 {
-    // Shields Up palette, light theme: #F5F5F7 canvas, white cards, #1D1D1F text,
-    // #007AFF accent, #D70015 danger, #86868B muted
-    private static readonly Color Bg = Color.Parse("#F5F5F7");
-    private static readonly Color Panel = Color.Parse("#FFFFFF");
-    private static readonly Color PanelBorder = Color.Parse("#E5E5EA");
-    private static readonly Color Text = Color.Parse("#1D1D1F");
-    private static readonly Color Muted = Color.Parse("#86868B");
-    private static readonly Color Cyan = Color.Parse("#007AFF");
-    private static readonly Color Good = Color.Parse("#1E8E3E");
-    private static readonly Color Bad = Color.Parse("#D70015");
-
-    private readonly TextBlock _status = new() { Text = "Click \"Check my chats\" to start — this app can only read, never change anything.", TextWrapping = TextWrapping.Wrap, Foreground = new SolidColorBrush(Text) };
-    private readonly Button _checkBtn = new() { Content = "Check my chats", Padding = new(14, 8) };
-    private readonly Button _saveBtn = new() { Content = "Save all my chats", Padding = new(14, 8), IsEnabled = false };
-    private readonly Button _openBtn = new() { Content = "Open the folder", Padding = new(14, 8), IsEnabled = false };
-    private readonly Button _readBtn = new() { Content = "Read my chats", Padding = new(14, 8), IsEnabled = false };
-    private readonly Button _verifyBtn = new() { Content = "Check my backups", Padding = new(14, 8), IsEnabled = false };
-    private readonly CheckBox _autoBox = new() { Content = "Remember for me — back up every month" };
+    // ---- the screen IS the state: one hero card, one reassurance, one action
+    private readonly TextBlock _heroTitle = new() { FontSize = Ui.H1, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap, Foreground = Ui.Brush(Ui.Text) };
+    private readonly TextBlock _heroBody = new() { FontSize = Ui.BodyL, TextWrapping = TextWrapping.Wrap, Foreground = Ui.Brush(Ui.Muted) };
+    private readonly Button _primaryBtn = new() { Content = "Recover my chats" };
+    private readonly Button _openBtn = new() { Content = "Open the folder" };
+    private readonly Button _verifyBtn = new() { Content = "Check my backups" };
+    private readonly Button _scaleBtn = new() { Content = "Text size: Normal" };
+    private readonly CheckBox _autoBox = new() { Content = "Remember for me — back up every month", FontSize = Ui.Meta };
+    private readonly ProgressBar _bar = new() { Height = 10, Minimum = 0, Maximum = 100, Value = 0, IsVisible = false };
+    private readonly TextBlock _progressWords = new() { FontSize = Ui.Body, TextWrapping = TextWrapping.Wrap, Foreground = Ui.Brush(Ui.Muted), IsVisible = false };
+    private readonly TextBlock _folderLabel = new() { Foreground = Ui.Brush(Ui.Muted), TextWrapping = TextWrapping.Wrap, FontSize = Ui.Small };
+    private readonly TextBox _log = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, FontSize = Ui.Small, Height = 220 };
     private string? _backupDir;
-    private readonly TextBlock _folderLabel = new() { Foreground = new SolidColorBrush(Muted), TextWrapping = TextWrapping.Wrap };
-    private readonly ProgressBar _bar = new() { Height = 16, Minimum = 0, Maximum = 100, Value = 0 };
-    private readonly TextBox _log = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap };
     private string _outDir = "";
     private bool _autoRescan;
     private bool _busy;
+    private Func<Task>? _primaryAction;
 
-        // Panic-grade copy: short words, one idea per line, big type in the panel
+    private enum Tab { Recover, Read, Backups, Tips, Settings }
+    private ReaderView? _reader;
+    private string? _readerDir;
+    private readonly TextBlock _verifyOut = new() { FontSize = Ui.Body, TextWrapping = TextWrapping.Wrap, Foreground = Ui.Brush(Ui.Text) };
+    private bool _verifyRan;
+    private Tab _tab = Tab.Recover;
+
+    // panic-grade copy: short words, one idea per line. Shown from the
+    // "Dos and don'ts" button - reassurance on demand, never in the way.
     private static readonly (bool Good, string Tip)[] Tips =
     {
         (true,  "Log in to chat.z.ai with your Google account first. Your chats live there."),
@@ -273,18 +303,19 @@ internal sealed class MainWindow : Window
     public MainWindow()
     {
         Title = "Z.ai Chat Recovery";
-        Width = 1020; Height = 780;
-        Background = new SolidColorBrush(Bg);
-        MinWidth = 900; MinHeight = 640;
+        Width = 900; Height = 780;
+        Background = Ui.Brush(Ui.Bg);
+        MinWidth = 780; MinHeight = 640;
 
         _outDir = Snapshots.NextSnapshotDir();
         _folderLabel.Text = "Backups go to: " + Snapshots.Root + "  (a new dated folder each time — older ones are never touched)";
 
-        _checkBtn.Click += async (_, _) => await CheckAsync();
-        _saveBtn.Click += async (_, _) => await SaveAsync();
+        _openBtn.IsEnabled = false;
+
+        _primaryBtn.Click += async (_, _) => { if (_primaryAction is { } a && !_busy) await a(); };
         _openBtn.Click += (_, _) => OpenFolder();
-        _readBtn.Click += (_, _) => OpenReader();
         _verifyBtn.Click += async (_, _) => await VerifyBackupsAsync();
+        _scaleBtn.Click += (_, _) => { Ui.CycleScale(); Render(); };
         _autoBox.IsChecked = Scheduler.IsScheduled();
         _autoBox.IsCheckedChanged += (_, _) =>
         {
@@ -300,164 +331,302 @@ internal sealed class MainWindow : Window
         };
         Activated += async (_, _) => { if (_autoRescan && !_busy) await CheckAsync(); };
         DetectExistingBackup();
-
-        var root = new Grid { ColumnDefinitions = new("*, 300"), Margin = new(20) };
-        root.Children.Add(BuildLeftPanel());
-        Grid.SetColumn(root.Children[^1], 0);
-        root.Children.Add(BuildTipsPanel());
-        Grid.SetColumn(root.Children[^1], 1);
-        Content = root;
+        SetWelcome();
+        Render();
     }
 
-    private Control BuildLeftPanel()
+    private void SetWelcome()
     {
-        var title = new TextBlock { Text = "Z.ai Chat Recovery", FontSize = 26, FontWeight = FontWeight.Bold, Foreground = new SolidColorBrush(Cyan) };
-        var sub = new TextBlock
+        var body = "Finds your saved chat.z.ai sign-in (log in once in your browser), then saves every chat to this computer. Read-only.";
+        if (_backupDir is not null)
+            body += "\n\nEarlier backup found - \"Read my chats\" below is ready.";
+        SetHero("Recover your chats", body, Ui.Text, "Recover my chats", CheckAsync);
+    }
+
+    /// <summary>Set the hero card: the reassurance, the explanation, and the
+    /// single next action. Technical detail lives in the Settings tab.</summary>
+    private void SetHero(string title, string body, Color titleColor, string primaryText, Func<Task>? primary)
+    {
+        _heroTitle.Text = title;
+        _heroTitle.Foreground = Ui.Brush(titleColor);
+        _heroBody.Text = body;
+        _heroBody.IsVisible = body.Length > 0;
+        _primaryBtn.Content = primaryText;
+        _primaryBtn.IsEnabled = primary is not null;
+        _primaryAction = primary;
+    }
+
+    /// <summary>Compose the whole window: a left tab rail and the selected
+    /// tab's page. Re-run on text-size changes - controls persist, so enabled
+    /// states, text and scroll positions survive a rebuild.</summary>
+    private void Render()
+    {
+        _scaleBtn.Content = "Text size: " + Ui.ScaleName;
+        Ui.StylePrimary(_primaryBtn);
+        foreach (var b in new[] { _openBtn, _verifyBtn, _scaleBtn }) Ui.StyleSecondary(b);
+
+        var side = new StackPanel { Spacing = 4 };
+        var brand = Ui.SmallCaps("Z.AI CHAT RECOVERY");
+        brand.Margin = new(10, 2, 8, 14);
+        side.Children.Add(brand);
+        side.Children.Add(TabButton("Recover my chats", Tab.Recover));
+        side.Children.Add(TabButton("Read my chats", Tab.Read));
+        side.Children.Add(TabButton("Check my backups", Tab.Backups));
+        side.Children.Add(TabButton("Dos and don'ts", Tab.Tips));
+        side.Children.Add(TabButton("Settings", Tab.Settings));
+
+        var sideCard = Ui.Card();
+        sideCard.Padding = new(10);
+        sideCard.Margin = new(0, 0, 18, 0);
+        sideCard.Child = side;
+
+        Control page = _tab switch
         {
-            Text = "An empty sidebar almost never means lost chats. This app checks, then saves everything - read-only.",
-            Foreground = new SolidColorBrush(Muted), TextWrapping = TextWrapping.Wrap
+            Tab.Read => ReadTab(),
+            Tab.Backups => BackupsTab(),
+            Tab.Tips => TipsTab(),
+            Tab.Settings => SettingsTab(),
+            _ => RecoverTab(),
         };
-        var statusBox = new Border
+
+        var grid = new Grid { ColumnDefinitions = new("Auto, *"), Margin = new(28) };
+        grid.Children.Add(sideCard);
+        var scroll = new ScrollViewer { Content = page };
+        grid.Children.Add(scroll);
+        Grid.SetColumn(scroll, 1);
+        Content = grid;
+    }
+
+    private Button TabButton(string label, Tab t)
+    {
+        var active = _tab == t;
+        var b = new Button
         {
-            Background = new SolidColorBrush(Panel),
-            BorderBrush = new SolidColorBrush(PanelBorder),
-            BorderThickness = new(1),
-            CornerRadius = new CornerRadius(10), Padding = new(16),
-            Child = _status, MinHeight = 64
+            Content = label, FontSize = Ui.Body, MinHeight = Ui.BtnH,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+            Padding = new(14, 10), CornerRadius = new CornerRadius(10),
+            BorderThickness = new(0),
+            Background = active ? Ui.Brush(Ui.InfoBg) : Brushes.Transparent,
+            Foreground = active ? Ui.Brush(Ui.Accent) : Ui.Brush(Ui.Text),
+            FontWeight = active ? FontWeight.SemiBold : FontWeight.Normal,
         };
-        var loginReminder = new Border
+        b.Click += (_, _) =>
         {
-            Background = new SolidColorBrush(Color.Parse("#E5F1FF")),
-            BorderBrush = new SolidColorBrush(Color.Parse("#A8CFFF")),
-            BorderThickness = new(1),
-            CornerRadius = new CornerRadius(10), Padding = new(14, 10),
-            Child = new TextBlock
-            {
-                Text = "ℹ  First time? Open chat.z.ai in your browser and sign in with your Google account. Your chats live in that account — this app uses that saved sign-in to find and save them.",
-                TextWrapping = TextWrapping.Wrap, FontSize = 13,
-                Foreground = new SolidColorBrush(Text)
-            }
+            if (_tab == t) return;
+            _tab = t;
+            Render();
+            if (t == Tab.Backups && !_verifyRan) _ = VerifyBackupsAsync();
         };
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Children = { _checkBtn, _saveBtn, _readBtn, _openBtn } };
-        var secondRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 18, Margin = new(0, 2, 0, 0), Children = { _verifyBtn, _autoBox } };
-        _autoBox.VerticalAlignment = VerticalAlignment.Center;
-        _log.Height = 330;
+        return b;
+    }
+
+    private Control RecoverTab()
+    {
+        var hero = Ui.Card();
+        var heroStack = new StackPanel { Spacing = 12 };
+        heroStack.Children.Add(_heroTitle);
+        heroStack.Children.Add(_heroBody);
+        heroStack.Children.Add(new StackPanel { Spacing = 6, Children = { _bar, _progressWords } });
+        heroStack.Children.Add(_primaryBtn);
+        hero.Child = heroStack;
+
         var footer = new TextBlock
         {
             Text = "Free and open source (Apache-2.0) · Your saved sign-in never leaves this computer · Requests go to chat.z.ai only",
-            Foreground = new SolidColorBrush(Color.Parse("#64748b")), TextWrapping = TextWrapping.Wrap, FontSize = 11
+            Foreground = Ui.Brush(Ui.Muted), TextWrapping = TextWrapping.Wrap, FontSize = Ui.Small, Margin = new(0, 6, 0, 0)
         };
-        return new StackPanel { Spacing = 12, Children = { title, sub, loginReminder, statusBox, buttons, secondRow, _folderLabel, _bar, _log, footer } };
+
+        var col = new StackPanel { Spacing = 16, MaxWidth = Math.Round(680 * Ui.Scale) };
+        col.Children.Add(hero);
+        col.Children.Add(footer);
+        return col;
     }
 
-    private Control BuildTipsPanel()
+    /// <summary>The reader, embedded as a tab page. Built once per backup
+    /// folder so chat selection and scroll survive tab switches.</summary>
+    private Control ReadTab()
     {
-        var panel = new StackPanel { Spacing = 12 };
-        panel.Children.Add(new TextBlock
+        var col = new StackPanel { MaxWidth = Math.Round(900 * Ui.Scale) };
+        if (_backupDir is null)
         {
-            Text = "IF THE LIST GOES EMPTY",
-            FontSize = 12, FontWeight = FontWeight.Bold,
-            Foreground = new SolidColorBrush(Muted)
-        });
-        panel.Children.Add(new TextBlock
+            var card = Ui.Card();
+            card.Child = Ui.Txt("No backups on this computer yet. Recover your chats first - the reader will be ready here right after.", Ui.Body, Ui.Text);
+            col.Children.Add(card);
+            return col;
+        }
+        if (_reader is null || _readerDir != _backupDir)
+        {
+            _reader = new ReaderView(_backupDir);
+            _readerDir = _backupDir;
+        }
+        col.Children.Add(_reader);
+        return col;
+    }
+
+    private Control BackupsTab()
+    {
+        var card = Ui.Card();
+        var sp = new StackPanel { Spacing = 12 };
+        sp.Children.Add(new TextBlock { Text = "Your backups", FontSize = Ui.H2, FontWeight = FontWeight.SemiBold });
+        sp.Children.Add(Ui.Txt("Every file in every dated backup, checked against its built-in integrity list. Nothing leaves this computer.", Ui.Meta, Ui.Muted));
+        _verifyBtn.Content = _verifyRan ? "Check again" : "Check my backups";
+        _verifyBtn.HorizontalAlignment = HorizontalAlignment.Left;
+        sp.Children.Add(_verifyBtn);
+        sp.Children.Add(_verifyOut);
+        card.Child = sp;
+        var col = new StackPanel { MaxWidth = Math.Round(680 * Ui.Scale) };
+        col.Children.Add(card);
+        return col;
+    }
+
+    private Task OpenReaderTabAsync()
+    {
+        _tab = Tab.Read;
+        Render();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>The DO/DON'T reassurance card - its own tab, so it never
+    /// competes with the recovery action but stays one click away.</summary>
+    private Control TipsTab()
+    {
+        var card = Ui.Card();
+        var sp = new StackPanel { Spacing = 12 };
+        sp.Children.Add(new TextBlock
         {
             Text = "Your chats are almost never gone.",
-            FontSize = 16, FontWeight = FontWeight.SemiBold,
-            Foreground = new SolidColorBrush(Text), TextWrapping = TextWrapping.Wrap
+            FontSize = Ui.H2, FontWeight = FontWeight.SemiBold,
+            Foreground = Ui.Brush(Ui.Text), TextWrapping = TextWrapping.Wrap
         });
+        sp.Children.Add(Ui.Txt("If the z.ai chat list ever looks empty, these habits keep a scare from becoming a loss.", Ui.Msg, Ui.Muted));
         bool? lastGood = null;
         foreach (var (good, tip) in Tips)
         {
             if (lastGood != good)
             {
-                panel.Children.Add(new TextBlock
+                sp.Children.Add(new TextBlock
                 {
                     Text = good ? "DO" : "DON'T",
-                    FontSize = 17, FontWeight = FontWeight.Bold, Margin = new(0, 10, 0, 0),
-                    Foreground = new SolidColorBrush(good ? Good : Bad)
+                    FontSize = Ui.Body, FontWeight = FontWeight.Bold, Margin = new(0, 8, 0, 0),
+                    Foreground = Ui.Brush(good ? Ui.Good : Ui.Bad)
                 });
                 lastGood = good;
             }
-            var tb = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 14, Margin = new(6, 0, 0, 0) };
-            tb.Inlines.Add(new Run { Text = good ? "✓  " : "✗  ", FontSize = 15, FontWeight = FontWeight.Bold, Foreground = new SolidColorBrush(good ? Good : Bad) });
-            tb.Inlines.Add(new Run { Text = tip, Foreground = new SolidColorBrush(Text) });
-            panel.Children.Add(tb);
+            var tb = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = Ui.Msg, Margin = new(6, 0, 0, 0) };
+            tb.Inlines.Add(new Run { Text = good ? "✓  " : "✗  ", FontSize = Ui.Body, FontWeight = FontWeight.Bold, Foreground = Ui.Brush(good ? Ui.Good : Ui.Bad) });
+            tb.Inlines.Add(new Run { Text = tip, Foreground = Ui.Brush(Ui.Text) });
+            sp.Children.Add(tb);
         }
-        return new Border
-        {
-            Background = new SolidColorBrush(Panel),
-            BorderBrush = new SolidColorBrush(PanelBorder),
-            BorderThickness = new(1),
-            CornerRadius = new CornerRadius(10), Padding = new(16),
-            Child = new ScrollViewer { Content = panel }
-        };
+        card.Child = sp;
+        var col = new StackPanel { MaxWidth = Math.Round(680 * Ui.Scale) };
+        col.Children.Add(card);
+        return col;
+    }
+
+    private Control SettingsTab()
+    {
+        var col = new StackPanel { Spacing = 16, MaxWidth = Math.Round(680 * Ui.Scale) };
+
+        var s1 = Ui.Card();
+        var sp1 = new StackPanel { Spacing = 16 };
+        sp1.Children.Add(new TextBlock { Text = "Settings", FontSize = Ui.H2, FontWeight = FontWeight.SemiBold });
+        var sizeRow = new StackPanel { Spacing = 6 };
+        sizeRow.Children.Add(Ui.Txt("Text size", Ui.BodyL, Ui.Text));
+        sizeRow.Children.Add(Ui.Txt("Make the whole app bigger and easier to read.", Ui.Meta, Ui.Muted));
+        _scaleBtn.HorizontalAlignment = HorizontalAlignment.Left;
+        sizeRow.Children.Add(_scaleBtn);
+        sp1.Children.Add(sizeRow);
+        var autoRow = new StackPanel { Spacing = 6 };
+        autoRow.Children.Add(Ui.Txt("Automatic backups", Ui.BodyL, Ui.Text));
+        autoRow.Children.Add(Ui.Txt("Back up all chats on the first of each month, 9 PM, without reminding you.", Ui.Meta, Ui.Muted));
+        _autoBox.VerticalAlignment = VerticalAlignment.Center;
+        autoRow.Children.Add(_autoBox);
+        sp1.Children.Add(autoRow);
+        s1.Child = sp1;
+
+        var s2 = Ui.Card();
+        var sp2 = new StackPanel { Spacing = 8 };
+        sp2.Children.Add(new TextBlock { Text = "Technical details", FontSize = Ui.H2, FontWeight = FontWeight.SemiBold });
+        sp2.Children.Add(Ui.Txt("What the app did, in technical words. Nothing here ever leaves this computer.", Ui.Meta, Ui.Muted));
+        sp2.Children.Add(_folderLabel);
+        sp2.Children.Add(_log);
+        _openBtn.HorizontalAlignment = HorizontalAlignment.Left;
+        sp2.Children.Add(_openBtn);
+        s2.Child = sp2;
+
+        col.Children.Add(s1);
+        col.Children.Add(s2);
+        return col;
     }
 
     private void Log(string s) => _log.Text += s + Environment.NewLine;
-
-    private void SetStatus(string text, IBrush color)
-    {
-        _status.Text = text;
-        _status.Foreground = color;
-    }
 
     private async Task CheckAsync()
     {
         if (_busy) return;
         _busy = true; _autoRescan = false;
-        _checkBtn.IsEnabled = false;
-        SetStatus("Checking your saved sign-in in Chrome, Edge, Brave and Firefox…", new SolidColorBrush(Muted));
+        SetHero("Checking…", "", Ui.Muted, "Checking…", null);
         Log("Looking for a chat.z.ai sign-in in browser storage…");
-        var cands = await Task.Run(Recovery.FindTokenCandidates);
-        Log($"  candidates found: {cands.Count}");
-        foreach (var c in cands.Take(5)) Log($"  {c.Email}  ({c.Where})");
+        try
+        {
+            var cands = await Task.Run(Recovery.FindTokenCandidates);
+            Log($"  candidates found: {cands.Count}");
+            foreach (var c in cands.Take(5)) Log($"  {c.Email}  ({c.Where})");
 
-        string? working = null;
-        foreach (var c in cands.Take(8))
-        {
-            if (c.Email.StartsWith("guest-", StringComparison.Ordinal))
+            string? working = null;
+            foreach (var c in cands.Take(8))
             {
-                Log("  skipping a guest sign-in - guest mode has its own, empty chat list");
-                continue;
+                if (c.Email.StartsWith("guest-", StringComparison.Ordinal))
+                {
+                    Log("  skipping a guest sign-in - guest mode has its own, empty chat list");
+                    continue;
+                }
+                if (await Task.Run(() => Recovery.TryUseTokenAsync(c.Token).GetAwaiter().GetResult()))
+                {
+                    working = c.Token;
+                    break;
+                }
             }
-            if (await Task.Run(() => Recovery.TryUseTokenAsync(c.Token).GetAwaiter().GetResult()))
-            {
-                working = c.Token;
-                break;
-            }
-        }
 
-        if (working is null)
-        {
-            SetStatus("We couldn't find a working sign-in on this computer.\n\nOpen your browser, go to chat.z.ai and log in (not as guest), then come back - we'll re-check automatically when the browser is in front.",
-                new SolidColorBrush(Color.Parse("#B45309")));
-            Log("No working sign-in. Log in to chat.z.ai in the browser, then switch back to this window.");
-            _autoRescan = true;
-        }
-        else
-        {
-            var preview = await Task.Run(async () =>
+            if (working is null)
             {
-                var chats = await Recovery.ListAllChatsAsync();
-                return chats.Count == 0
-                    ? (0, "")
-                    : (chats.Count, chats.Max(c => c.TryGetProperty("updated_at", out var u) ? u.GetInt64() : 0).ToString());
-            });
-            if (preview.Item1 == 0)
-            {
-                SetStatus($"Signed in as {Recovery.AccountEmail}, but this account's list is empty.\n\nIf you had chats, they may be under a different login method (for example Google vs email). Log in to chat.z.ai with that account, then press Check again.",
-                    new SolidColorBrush(Color.Parse("#B45309")));
+                SetHero("Sign in first",
+                    "Open chat.z.ai in your browser and log in with your Google account (not as a guest), then come back - this app re-checks by itself.",
+                    Ui.Warn, "Try again", CheckAsync);
+                Log("No working sign-in. Log in to chat.z.ai in the browser, then switch back to this window.");
                 _autoRescan = true;
             }
             else
             {
-                SetStatus($"Good news - we can see your {preview.Item1} chats on the account {Recovery.AccountEmail}.\nThey are safe on the server. Press \"Save all my chats\" to keep a copy on this computer.",
-                    new SolidColorBrush(Good));
-                _saveBtn.IsEnabled = true;
+                var preview = await Task.Run(async () =>
+                {
+                    var chats = await Recovery.ListAllChatsAsync();
+                    return chats.Count == 0
+                        ? (0, "")
+                        : (chats.Count, chats.Max(c => c.TryGetProperty("updated_at", out var u) ? u.GetInt64() : 0).ToString());
+                });
+                if (preview.Item1 == 0)
+                {
+                    SetHero("This account has no chats",
+                        $"Signed in as {Recovery.AccountEmail}. Your chats may be under a different login (for example Google vs email). Log in with that account in the browser, then try again.",
+                        Ui.Warn, "Try again", CheckAsync);
+                    _autoRescan = true;
+                }
+                else
+                {
+                    SetHero($"Your {preview.Item1} chats are safe",
+                        $"Still on the z.ai website, on the account {Recovery.AccountEmail}. Save a copy to this computer.",
+                        Ui.Good, "Save all my chats", SaveAsync);
+                }
+                Log($"Signed in as {Recovery.AccountEmail} ({preview.Item1} chats visible).");
             }
-            Log($"Signed in as {Recovery.AccountEmail} ({preview.Item1} chats visible).");
         }
-        _checkBtn.IsEnabled = true;
+        catch (Exception ex)
+        {
+            SetHero("Couldn't check just now", Ui.PlainError(ex), Ui.Bad, "Try again", CheckAsync);
+            Log("ERROR: " + ex.Message);
+        }
         _busy = false;
     }
 
@@ -465,8 +634,9 @@ internal sealed class MainWindow : Window
     {
         if (_busy) return;
         _busy = true;
-        _checkBtn.IsEnabled = false; _saveBtn.IsEnabled = false;
-        _bar.Value = 0;
+        _bar.Value = 0; _bar.IsVisible = true;
+        _progressWords.IsVisible = true; _progressWords.Text = "Starting…";
+        SetHero("Saving…", "", Ui.Muted, "Saving…", null);
         var prev = Snapshots.Latest();
         _outDir = Snapshots.NextSnapshotDir();
         Directory.CreateDirectory(_outDir);
@@ -479,6 +649,7 @@ internal sealed class MainWindow : Window
                     Dispatcher.UIThread.Post(() =>
                     {
                         _bar.Maximum = total; _bar.Value = i;
+                        _progressWords.Text = $"Saving chat {i} of {total} - {title}";
                         Log($"  saving chat {i} of {total}: {title}");
                     });
                     return Task.CompletedTask;
@@ -487,11 +658,10 @@ internal sealed class MainWindow : Window
             Snapshots.WriteManifest(_outDir);
             _openBtn.IsEnabled = true;
             _backupDir = _outDir;
-            _readBtn.IsEnabled = true;
-            _verifyBtn.IsEnabled = true;
             RememberBackup(_outDir);
-            SetStatus($"All done - {summary.Done} chats saved as backup \"{Path.GetFileName(_outDir)}\".\nOlder backups are untouched, so you can always go back to them.\nPress \"Read my chats\" to read them here.",
-                new SolidColorBrush(Good));
+            SetHero($"{summary.Done} chats saved",
+                $"Backup \"{Path.GetFileName(_outDir)}\" - older backups are untouched.",
+                Ui.Good, "Read my chats", OpenReaderTabAsync);
             Log($"Done. {summary.Done} chats, {summary.Failed} failed. Backup folder: {_outDir}");
             if (prev is not null)
                 Log($"  {linked} unchanged files shared with the previous backup (no extra space used).");
@@ -499,28 +669,43 @@ internal sealed class MainWindow : Window
         }
         catch (Exception ex)
         {
-            SetStatus("Something went wrong while saving - see the details below. Nothing on your account was changed.",
-                new SolidColorBrush(Bad));
+            SetHero("Couldn't finish saving", Ui.PlainError(ex), Ui.Bad, "Try again", SaveAsync);
             Log("ERROR: " + ex.Message);
         }
-        _checkBtn.IsEnabled = true; _saveBtn.IsEnabled = true;
+        _bar.IsVisible = false; _progressWords.IsVisible = false;
         _busy = false;
     }
 
     private async Task VerifyBackupsAsync()
     {
-        if (_backupDir is null) return;
+        if (_backupDir is null)
+        {
+            _verifyOut.Text = "No backups on this computer yet.";
+            _verifyOut.Foreground = Ui.Brush(Ui.Warn);
+            return;
+        }
         _verifyBtn.IsEnabled = false;
-        SetStatus("Checking every backup against its integrity list…", new SolidColorBrush(Muted));
-        var root = Snapshots.List(Path.GetDirectoryName(_backupDir)).Count > 0
-            ? Path.GetDirectoryName(_backupDir)!
-            : _backupDir;
-        var result = await Task.Run(() => Snapshots.VerifyAll(root));
-        var good = result.FilesBad == 0;
-        SetStatus(Snapshots.PlainReport(result),
-            new SolidColorBrush(good ? Good : Bad));
-        foreach (var p in result.Problems) Log("  " + p);
-        Log($"Check finished: {result.FilesOk} files OK, {result.FilesBad} problems, {result.Snapshots} backup(s).");
+        _verifyOut.Text = "Checking every file…";
+        _verifyOut.Foreground = Ui.Brush(Ui.Muted);
+        try
+        {
+            var root = Snapshots.List(Path.GetDirectoryName(_backupDir)).Count > 0
+                ? Path.GetDirectoryName(_backupDir)!
+                : _backupDir;
+            var result = await Task.Run(() => Snapshots.VerifyAll(root));
+            _verifyRan = true;
+            var good = result.FilesBad == 0;
+            _verifyOut.Text = Snapshots.PlainReport(result);
+            _verifyOut.Foreground = Ui.Brush(good ? Ui.Good : Ui.Bad);
+            foreach (var p in result.Problems) Log("  " + p);
+            Log($"Check finished: {result.FilesOk} files OK, {result.FilesBad} problems, {result.Snapshots} backup(s).");
+        }
+        catch (Exception ex)
+        {
+            _verifyOut.Text = Ui.PlainError(ex);
+            _verifyOut.Foreground = Ui.Brush(Ui.Bad);
+        }
+        _verifyBtn.Content = "Check again";
         _verifyBtn.IsEnabled = true;
     }
 
@@ -560,8 +745,6 @@ internal sealed class MainWindow : Window
             if (latest is not null)
             {
                 _backupDir = latest;
-                _readBtn.IsEnabled = true;
-                _verifyBtn.IsEnabled = true;
                 Log($"Found your backups: {Snapshots.Root} ({Path.GetFileName(latest)} is the newest)");
                 return;
             }
@@ -571,7 +754,6 @@ internal sealed class MainWindow : Window
                 if (Directory.Exists(dir) && Directory.GetFiles(dir, "*.json").Length > 0)
                 {
                     _backupDir = dir;
-                    _readBtn.IsEnabled = true;
                     Log($"Found your earlier backup: {dir}");
                     return;
                 }
@@ -586,7 +768,6 @@ internal sealed class MainWindow : Window
                 if (newest is { } n)
                 {
                     _backupDir = n;
-                    _readBtn.IsEnabled = true;
                     Log($"Found your earlier backup: {n}");
                 }
             }
@@ -597,7 +778,7 @@ internal sealed class MainWindow : Window
     private void OpenReader()
     {
         if (_backupDir is null || !Directory.Exists(_backupDir)) return;
-        new ReaderWindow(_backupDir).Show(this);
+        new ReaderWindow(_backupDir).Show(this);   // kept for --open-reader parity
     }
 }
 

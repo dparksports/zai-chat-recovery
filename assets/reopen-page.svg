@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="540" viewBox="0 0 1200 540" role="img" aria-label="Every chat, one click away">
+  <rect width="1200" height="540" rx="16" fill="#F5F5F7"/>
+  <g font-family="Segoe UI, system-ui, -apple-system, sans-serif">
+    <text x="600" y="58" fill="#1D1D1F" font-size="34" font-weight="700" text-anchor="middle">Every chat, one click away</text>
+    <text x="600" y="92" fill="#6E6E73" font-size="19" text-anchor="middle">Every backup includes a page called reopen-chats.html. Double-click it, in any browser you&#8217;re signed in to.</text>
+
+    <!-- mock of the reopen page -->
+    <g>
+      <rect x="120" y="124" width="620" height="286" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <text x="148" y="170" fill="#1D1D1F" font-size="24" font-weight="800">Your chats still open</text>
+      <rect x="148" y="186" width="564" height="40" rx="10" fill="#E5F1FF" stroke="#A8CFFF"/>
+      <text x="164" y="212" fill="#1D1D1F" font-size="14">Signed in as you@example.com? Then every button below just works.</text>
+      <rect x="148" y="238" width="220" height="44" rx="11" fill="#007AFF"/>
+      <text x="258" y="266" fill="#FFFFFF" font-size="16" font-weight="600" text-anchor="middle">Open the next 10 chats</text>
+      <text x="386" y="266" fill="#6E6E73" font-size="14">12 of 47 opened &#183; 35 to go</text>
+
+      <g>
+        <rect x="148" y="296" width="564" height="32" rx="8" fill="#F5F5F7" stroke="#E5E5EA"/>
+        <text x="164" y="317" fill="#1D1D1F" font-size="14" font-weight="600">Dinner plans for Friday</text>
+        <rect x="622" y="300" width="78" height="24" rx="8" fill="#FFFFFF" stroke="#007AFF" stroke-width="2"/>
+        <text x="661" y="317" fill="#007AFF" font-size="13" font-weight="600" text-anchor="middle">Open &#8594;</text>
+      </g>
+      <g>
+        <rect x="148" y="334" width="564" height="32" rx="8" fill="#F5F5F7" stroke="#E5E5EA"/>
+        <text x="164" y="355" fill="#1D1D1F" font-size="14" font-weight="600">Appeal the claim denial</text>
+        <rect x="622" y="338" width="78" height="24" rx="8" fill="#FFFFFF" stroke="#007AFF" stroke-width="2"/>
+        <text x="661" y="355" fill="#007AFF" font-size="13" font-weight="600" text-anchor="middle">Open &#8594;</text>
+      </g>
+      <g>
+        <rect x="148" y="372" width="564" height="32" rx="8" fill="#F5F5F7" stroke="#E5E5EA"/>
+        <text x="164" y="393" fill="#1D1D1F" font-size="14" font-weight="600">OCR for PDF photos</text>
+        <rect x="622" y="376" width="78" height="24" rx="8" fill="#FFFFFF" stroke="#007AFF" stroke-width="2"/>
+        <text x="661" y="393" fill="#007AFF" font-size="13" font-weight="600" text-anchor="middle">Open &#8594;</text>
+      </g>
+    </g>
+
+    <!-- three plain-word facts -->
+    <g>
+      <rect x="784" y="124" width="296" height="86" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <text x="804" y="158" fill="#1D1D1F" font-size="18" font-weight="600">Works while the list is empty</text>
+      <text x="804" y="186" fill="#6E6E73" font-size="15">Direct chat links keep working</text>
+      <text x="804" y="206" fill="#6E6E73" font-size="15">even during the website bug.</text>
+
+      <rect x="784" y="224" width="296" height="86" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <text x="804" y="258" fill="#1D1D1F" font-size="18" font-weight="600">One button, ten chats</text>
+      <text x="804" y="286" fill="#6E6E73" font-size="15">"Open the next 10 chats" opens</text>
+      <text x="804" y="306" fill="#6E6E73" font-size="15">them in order, and counts along.</text>
+
+      <rect x="784" y="324" width="296" height="86" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <text x="804" y="358" fill="#1D1D1F" font-size="18" font-weight="600">Even chats from old backups</text>
+      <text x="804" y="386" fill="#6E6E73" font-size="15">The reader&#8217;s button lists every chat</text>
+      <text x="804" y="406" fill="#6E6E73" font-size="15">from every backup, marked by date.</text>
+    </g>
+
+    <rect x="120" y="432" width="960" height="70" rx="14" fill="#E8F8EE"/>
+    <text x="600" y="475" fill="#1E8E3E" font-size="21" font-weight="600" text-anchor="middle">Keep the page. It&#8217;s your chat index &#8212; it needs no internet to show your list.</text>
+  </g>
+</svg>

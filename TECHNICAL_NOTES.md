@@ -120,13 +120,31 @@ Avalonia gotchas paid for in bug reports, so you don't have to:
   transcript files.
 - Global exception handlers write `%TEMP%/zai-recovery-crash.log` — a WinExe
   crash is otherwise completely silent.
+- **Design system: `Ui.cs`.** One palette, one type scale (H1 30 → Small 13,
+  nothing smaller), one text-size setting. Muted is `#6E6E73`, not `#86868B` —
+  the old gray was 3.4:1 on the canvas, below WCAG AA for small text. The
+  setting (`%APPDATA%/ZaiChatRecovery/text-size.txt`: normal/large/largest)
+  applies live: both windows compose in a `Render()` method that is re-run on
+  the cycle button, and controls are persistent fields so selection, scroll
+  and enabled states survive the rebuild.
+- **Font:** Segoe UI is pinned on Windows only (present since Vista). macOS
+  and Linux keep Avalonia's system default (SF Pro / the distro UI font) —
+  overriding there risks missing-family tofu for no visual gain.
+- **Main window = tab rail** (Recover my chats / Read my chats / Check my
+  backups / Dos and don'ts / Settings). The reader is a `ReaderView`
+  `UserControl` shared by the Read tab and the `--open-reader` window; dialogs
+  launched from inside it get their owner via `TopLevel.GetTopLevel(this)`.
+  The Backups tab runs `--verify` automatically on first visit.
 
 ## 7. Command-line reference
 
 Desktop app: `--selftest` (headless engine + graphics probe), `--open-reader
-<folder>`, `--fetch-attachments <chat.json>`, `--restore <chat.json>`.
+<folder>`, `--fetch-attachments <chat.json>`, `--restore <chat.json>`,
+`--reopen-page <folder>` (build the reopen page for any backup folder,
+headless — path is left in `%TEMP%/zai-reopenpage.txt`).
 
-Python CLI: `--out DIR`, `--limit N`, `--token <jwt>`.
+Python CLI: `--out DIR`, `--limit N`, `--token <jwt>`, `--open N` (after
+saving, reopen the N newest chats in the default browser, one paced tab each).
 
 ## 8. CI
 
@@ -162,3 +180,36 @@ backups" (`--verify`) exists; it caught precisely that case during
 development. Monthly automation is a Task Scheduler job (Windows) or a
 crontab line (macOS/Linux) running `--auto-backup`. Support flags:
 `--manifest <snap>`, `--dedup <new> <prev>`, `--verify <root>`.
+
+## 11. The reopen page (`reopen-chats.html`)
+
+Every backup ships a self-contained HTML index that reopens each chat on the
+website with one click — `https://chat.z.ai/c/<id>` still resolves while the
+sidebar list is broken, which is the whole trick. Constraints that shaped it:
+
+- **Popup-gesture rule:** browsers only allow `window.open` during a user
+  gesture, so "Open the next 10 chats" fires all ten opens synchronously
+  inside one click. Paced/delayed opens lose transient activation and get
+  popup-blocked. Tabs the browser refuses (`window.open` returns null) are
+  counted and explained in plain words ("that's its pop-up guard") instead
+  of failing silently.
+- **Login lives in the browser, not the tool:** the page never touches the
+  JWT. It tells the user which account the browser should be signed in as;
+  z.ai authenticates each tab itself. A login page just means: sign in,
+  come back.
+- **Union across snapshots:** the reader's "Open my chats on the website"
+  button and `--reopen-page <folder>` build the page from EVERY dated
+  snapshot — newest snapshot wins for title/date, and chats missing from
+  the newest are tagged "only in your YYYY-MM-DD backup", so chats that
+  disappeared from later backups are still one click away. On demand the
+  page is written to a **temp copy**: dated snapshots are never modified.
+- **Manifest exclusion:** `manifest.json` hashing skips `reopen-chats.html`
+  on purpose. It is a regenerable index, not user data; covering it would
+  make any later regeneration fail "Check my backups".
+- **One design, two generators:** the Python CLI and C# `ReopenPage.cs`
+  emit the same page — system fonts per OS (SF Pro / Segoe UI / Ubuntu /
+  Noto Sans), 18px+ body text, 48px+ touch targets, everything HTML-escaped.
+- **Related fix:** the reader's `OpenUrl` now branches per OS. Using
+  `UseShellExecute` on a URL only opens a browser on Windows; on macOS/Linux
+  it execs the URL as a program name and fails silently (this also affected
+  the auto-open after restore and paste-continue).

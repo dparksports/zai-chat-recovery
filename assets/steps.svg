@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="540" viewBox="0 0 1200 540" role="img" aria-label="Three simple steps">
   <rect width="1200" height="540" rx="16" fill="#F5F5F7"/>
   <g font-family="Segoe UI, system-ui, -apple-system, sans-serif">
-    <text x="600" y="64" fill="#1D1D1F" font-size="34" font-weight="700" text-anchor="middle">Three steps. Two buttons.</text>
+    <text x="600" y="64" fill="#1D1D1F" font-size="34" font-weight="700" text-anchor="middle">Three steps. One button at a time.</text>
 
     <g>
       <rect x="60" y="110" width="340" height="290" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
@@ -16,16 +16,16 @@
       <rect x="460" y="110" width="340" height="290" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
       <circle cx="630" cy="170" r="28" fill="#007AFF"/>
       <text x="630" y="180" fill="#FFFFFF" font-size="26" font-weight="700" text-anchor="middle">2</text>
-      <text x="630" y="238" fill="#1D1D1F" font-size="22" font-weight="600" text-anchor="middle">"Check my chats"</text>
-      <text x="630" y="286" fill="#1D1D1F" font-size="18" text-anchor="middle">The app counts your chats</text>
-      <text x="630" y="312" fill="#1D1D1F" font-size="18" text-anchor="middle">and shows you the number.</text>
+      <text x="630" y="238" fill="#1D1D1F" font-size="22" font-weight="600" text-anchor="middle">"Recover my chats"</text>
+      <text x="630" y="286" fill="#1D1D1F" font-size="18" text-anchor="middle">Press the big blue button.</text>
+      <text x="630" y="312" fill="#1D1D1F" font-size="18" text-anchor="middle">It says: &#8220;Your 23 chats are safe.&#8221;</text>
     </g>
 
     <g>
       <rect x="860" y="110" width="340" height="290" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
       <circle cx="1030" cy="170" r="28" fill="#007AFF"/>
       <text x="1030" y="180" fill="#FFFFFF" font-size="26" font-weight="700" text-anchor="middle">3</text>
-      <text x="1030" y="238" fill="#1D1D1F" font-size="22" font-weight="600" text-anchor="middle">"Save all my chats"</text>
+      <text x="1030" y="238" fill="#1D1D1F" font-size="22" font-weight="600" text-anchor="middle">Press "Save all my chats"</text>
       <text x="1030" y="286" fill="#1D1D1F" font-size="18" text-anchor="middle">Everything is copied</text>
       <text x="1030" y="312" fill="#1D1D1F" font-size="18" text-anchor="middle">to your computer.</text>
     </g>

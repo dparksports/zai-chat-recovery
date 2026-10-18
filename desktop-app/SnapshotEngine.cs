@@ -105,7 +105,11 @@ internal static class Snapshots
         var files = new SortedDictionary<string, string>();
         foreach (var f in Directory.GetFiles(snap, "*", SearchOption.AllDirectories))
         {
-            if (f.EndsWith("manifest.json", StringComparison.OrdinalIgnoreCase)) continue;
+            // manifest.json is the manifest itself; reopen-chats.html is a
+            // regenerable index page - covering it would make any later
+            // regeneration fail verification, and it protects no user data.
+            if (f.EndsWith("manifest.json", StringComparison.OrdinalIgnoreCase)
+                || f.EndsWith("reopen-chats.html", StringComparison.OrdinalIgnoreCase)) continue;
             using var h = SHA256.Create();
             using var fs = File.OpenRead(f);
             files[Path.GetRelativePath(snap, f).Replace('\\', '/')] =

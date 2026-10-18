@@ -6,21 +6,31 @@
 
 Sometimes the chat.z.ai website stops showing your conversation list (it happened to many people on October 16, 2026). It looks like everything was deleted. It almost never is. The chats are still on the website's computers — only the list stopped showing.
 
-This free, open-source app checks that for you, saves every conversation to your computer, lets you read them comfortably, and can even put a chat back into your account if you want it there again.
+This free, open-source app checks that for you, saves every conversation to your computer, and puts every chat one click away again.
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 ## What do I do?
 
-1. **Download** the app for your computer from [Releases](../../releases) (see the table below).
-2. **Open it and click "Check my chats."** It looks for your saved sign-in (Chrome, Edge, Brave, or Firefox) and tells you in plain words what it finds — like *"Good news — we can see your 23 chats."*
-3. **Click "Save all my chats."** Everything is copied to a folder on your computer: readable pages, the direct links to each chat, and a safe full-fidelity copy.
-
-That's it. Three steps, two buttons.
-
 ![Three steps](assets/steps.svg)
 
-> **One thing first:** make sure you've logged in to [chat.z.ai](https://chat.z.ai) with your Google account in your browser at least once on this computer. Your chats live in that account — the app uses that saved sign-in to reach them. (The app reminds you of this on its main screen.)
+1. **Download** the app for your computer from [Releases](../../releases) (see the table below).
+2. **Press "Recover my chats."** The app looks for the sign-in your browser already saved (Chrome, Edge, Brave, or Firefox) and tells you in plain words what it finds — like *"Your 23 chats are safe."*
+3. **Press "Save all my chats."** Everything is copied into a dated folder on your computer: readable pages, the direct links to each chat, and a safe full-fidelity copy.
+
+That's it. One big button at a time.
+
+Everything lives behind five plain-word tabs on the left:
+
+| Tab | What it does |
+|---|---|
+| **Recover my chats** | Check, then save — one button at a time |
+| **Read my chats** | Every conversation, readable like a chat, with search |
+| **Check my backups** | Proves every saved file is intact |
+| **Dos and don'ts** | Calm advice if the list goes empty again |
+| **Settings** | Bigger text, monthly backups, technical details |
+
+> **One thing first:** make sure you've logged in to [chat.z.ai](https://chat.z.ai) in your browser at least once on this computer. Your chats live in that account — the app uses that saved sign-in to reach them.
 
 ## Downloads
 
@@ -54,11 +64,19 @@ The Mac blocks apps it doesn't recognize, including this one — that's Gatekeep
 
 The short version: **save first, don't fix later.** Don't log out, don't clear anything, don't delete chats in a panic — those steps are how a display problem turns into a real loss. The chat links (`chat.z.ai/c/…`) still open even while the list is empty; save them first.
 
+## Every chat, one click away
+
+![Reopen page](assets/reopen-page.svg)
+
+Every backup includes a page called **`reopen-chats.html`** — double-click it any time. It lists every chat with an **Open** button, so each conversation is one click away **even while the website's chat list looks empty**. "Open the next 10 chats" opens them in order and counts along.
+
+The same page lives behind the **"Open my chats on the website"** button in the reader — that version lists every chat from **every** backup you've ever made, and marks chats that only exist in older backups. Terminal folks: `python recover_zai_chats.py --open 10` reopens the 10 newest right away.
+
 ## Reading your saved chats
 
 ![Viewer](assets/viewer.svg)
 
-Click **"Read my chats"** and the app shows every conversation in a clean list. Search by name, click one, and read it like a chat — with any photos or files shown right where they appeared, and a button to open the same chat on the website. It also reads backups you saved earlier, including ones made by the Python tool.
+Open the **"Read my chats"** tab and every conversation is there in a clean list. Search by name, click one, and read it like a chat — with any photos or files shown right where they appeared, and a button to open the same chat on the website.
 
 ## Bringing a chat back
 
@@ -71,21 +89,26 @@ Two buttons, your choice:
 
 ## Never lose them again: dated backups
 
-Every time you save, the app creates a **new backup folder with the date on it** — like `Z.ai Backups/2026-10-17 2030`. Older backups are never touched or changed, so you can always go back to any day.
+Every time you save, the app creates a **new backup folder with the date on it** — like `Z.ai Backups/2026-10-18 2030`. Older backups are never touched or changed, so you can always go back to any day.
 
-- **"Remember for me — back up every month"** — one checkbox, and the app backs up your chats automatically on the first of each month. No reminders to set, nothing to remember.
+- **"Remember for me — back up every month"** (in Settings) — one checkbox, and the app backs up your chats automatically on the first of each month. No reminders to set, nothing to remember.
 - **Unchanged chats cost nothing.** If a chat is the same as last month, the two backups share it quietly under the hood — you still see complete, independent folders for every date.
-- **"Check my backups"** — re-checks every file in every dated backup against its built-in integrity list and tells you in plain words: *"All 100 files across 2 backups verified — everything is intact."* If anything ever gets damaged or deleted, it names the file and the date it can be recovered from.
+- **"Check my backups"** — its own tab. It re-checks every file in every dated backup against its built-in integrity list and tells you in plain words: *"All 100 files across 2 backups verified — everything is intact."* It runs by itself the first time you look. If anything ever gets damaged or deleted, it names the file and the date it can be recovered from.
 - **Go back in time.** In the reader, the **Backup date** picker shows every saved date. Pick an older one to see your chats exactly as they were that day — and everything works there too: reading, copying, even restoring a chat back to your account from any date.
+
+## If the letters feel small
+
+Settings → **Text size** makes the whole app bigger — Normal, Large, or Largest — and remembers your choice. Big, calm text is the point: this app is built for a bad day, not for a resume.
 
 ## Common questions
 
 | What you see | What to do |
 |---|---|
-| "No working sign-in" | Open chat.z.ai in your browser, log in (not as guest), come back — the app re-checks by itself. |
-| The list shows someone else's (empty) account | Check the email at the top of the chat.z.ai website — Google and email sign-ins can be different accounts. |
+| "Sign in first" | Open chat.z.ai in your browser, log in (not as guest), come back — the app re-checks by itself. |
+| "This account has no chats" | Check the email at the top of the chat.z.ai website — Google and email sign-ins can be different accounts. Log in with the one that had your chats, then press Try again. |
 | Mac says the app can't be opened | Follow **"Mac: how to open it the first time"** above — you approve the app once in Privacy & Security, then it opens normally. |
 | Where did my chats go? | Almost always: nowhere. It's a website display problem. This app proves it in ten seconds. |
+| A chat tab asked me to sign in | The browser you opened the page in wasn't signed in to chat.z.ai. Sign in there as the same account, then press the chat's Open button again. |
 
 ## Your privacy, in one sentence
 
@@ -96,10 +119,11 @@ Everything happens on your computer; the app only ever talks to chat.z.ai, only 
 The Python one-liner works everywhere with no installs:
 
 ```
-python recover_zai_chats.py
+python recover_zai_chats.py            # find token, recover all chats
+python recover_zai_chats.py --open 10  # also reopen the 10 newest in your browser
 ```
 
-How it all actually works — the session-token discovery, the API, the backup formats, the import endpoint, and every engineering gotcha we hit — is documented in **[TECHNICAL_NOTES.md](TECHNICAL_NOTES.md)**.
+How it all actually works — the session-token discovery, the API, the backup formats, the restore endpoint, the reopen page's popup-gesture rules, and every engineering gotcha we hit — is documented in **[TECHNICAL_NOTES.md](TECHNICAL_NOTES.md)**.
 
 ## License
 

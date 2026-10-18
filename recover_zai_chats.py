@@ -19,6 +19,8 @@ still stored on Z.ai's servers. This tool proves it and recovers everything:
   3. Writes to an output folder:
        INDEX.md            - all chats with links and message counts
        chat-urls.md        - direct https://chat.z.ai/c/<id> URLs
+       reopen-chats.html   - one-click page: every chat still opens on the
+                             website (open it in the browser logged in to z.ai)
        <title>__<id>.md    - readable transcript per chat
        <id>.json           - raw API JSON (lossless)
 
@@ -34,6 +36,8 @@ Usage:
     python recover_zai_chats.py --out my-backup     # choose output folder
     python recover_zai_chats.py --token eyJ...      # paste token manually
     python recover_zai_chats.py --limit 2           # quick test run
+    python recover_zai_chats.py --open 10           # also reopen the 10 newest
+                                                    # chats in your default browser
 
 If auto-discovery finds nothing (or only "guest-..." identities): log in to
 chat.z.ai in your browser once, close the tab, and rerun. Or extract the token
@@ -45,13 +49,16 @@ import argparse
 import base64
 import datetime
 import glob
+import html
 import json
 import os
 import re
+import string
 import sys
 import time
 import urllib.error
 import urllib.request
+import webbrowser
 
 API = "https://chat.z.ai/api/v1"
 UA = "zai-chat-recovery/1.0 (local, read-only)"
@@ -59,6 +66,129 @@ JWT_RE = re.compile(
     r"eyJhbGciOi[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}"
 )
 PT_OFFSET = datetime.timezone(datetime.timedelta(hours=-7))  # display only
+
+# Self-contained reopen page: no network, no dependencies, big calm type.
+# Batch opens happen synchronously inside one click because browsers only
+# allow window.open during a user gesture - paced/delayed opens get blocked.
+REOPEN_PAGE = string.Template("""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your chats still open - Z.ai Chat Recovery</title>
+<style>
+  :root { --bg:#F5F5F7; --panel:#FFFFFF; --line:#E5E5EA; --text:#1D1D1F; --muted:#6E6E73;
+          --accent:#007AFF; --good:#1E8E3E; --warn:#B45309; }
+  * { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; padding:0 20px 64px; background:var(--bg); color:var(--text);
+         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,Cantarell,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+         font-size:18px; line-height:1.55; }
+  .wrap { max-width:820px; margin:0 auto; }
+  h1 { font-size:30px; line-height:1.25; margin:38px 0 8px; font-weight:800; }
+  .sub { font-size:19px; color:var(--muted); margin:0 0 20px; }
+  .banner { background:#E5F1FF; border:1px solid #A8CFFF; border-radius:12px;
+            padding:14px 18px; margin:0 0 20px; font-size:17px; }
+  .brow { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:0 0 14px; }
+  button.big { min-height:52px; padding:12px 24px; font-size:18px; font-weight:600;
+               color:#fff; background:var(--accent); border:0; border-radius:12px; cursor:pointer; }
+  button.big:disabled { opacity:.4; cursor:default; }
+  .progress { font-size:16.5px; color:var(--muted); }
+  #q { display:block; width:100%; min-height:52px; font-size:18px; padding:10px 16px;
+       border:1.5px solid var(--line); border-radius:12px; background:#fff; color:var(--text);
+       font-family:inherit; }
+  ol.chats { list-style:none; margin:14px 0 0; padding:0; }
+  li.chat { display:flex; gap:14px; align-items:center; background:var(--panel);
+            border:1px solid var(--line); border-radius:14px; padding:14px 18px; margin-bottom:10px; }
+  li.chat .meta { flex:1; min-width:0; }
+  li.chat .t { font-size:18.5px; font-weight:600; overflow-wrap:anywhere; }
+  li.chat .d { font-size:15px; color:var(--muted); margin-top:3px; }
+  li.chat .d .old { color:var(--warn); font-weight:600; }
+  a.open { flex-shrink:0; display:inline-block; min-height:48px; padding:10px 20px;
+           font-size:17px; font-weight:600; color:var(--accent); background:#fff;
+           border:2px solid var(--accent); border-radius:12px; text-decoration:none; }
+  a.open:visited { color:var(--accent); }
+  li.opened { opacity:.75; }
+  li.opened a.open { color:var(--good); border-color:var(--good); }
+  .tip { display:none; background:#FFF4E0; border:1px solid #E8C57E; color:var(--warn);
+         border-radius:12px; padding:12px 16px; font-size:16px; margin-top:14px; }
+  .tip.show { display:block; }
+  footer { margin-top:36px; font-size:14.5px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Your chats still open</h1>
+  <p class="sub">$COUNTLABEL, saved on this computer. Every one is still on the z.ai website -
+     even if your chat list there looks empty. Click any chat to read it.</p>
+  <div class="banner"><strong>One thing first:</strong> this page uses your browser's own z.ai login.
+     Make sure the browser showing this page is signed in as $ACCOUNT -
+     if a chat asks you to sign in, sign in, then come back. Nothing is lost by closing this page.</div>
+  <div class="brow">
+    <button class="big" id="next" type="button">Open the next 10 chats</button>
+    <span class="progress" id="prog"></span>
+  </div>
+  <input id="q" type="search" placeholder="Search your chats by name&hellip;" autocomplete="off">
+  <ol class="chats" id="list">
+$ITEMS
+  </ol>
+  <p class="tip" id="tip"><strong>Your browser stopped some tabs.</strong> That is its pop-up guard,
+     not a problem with your chats. Click the remaining chats one by one -
+     or allow pop-up windows for this page and press the button again.</p>
+  <footer>Made by Z.ai Chat Recovery on $GENERATED. The links open on chat.z.ai and keep working
+     even while its chat list looks empty. Keep this file - it is your chat index.</footer>
+</div>
+<script>
+(function () {
+  var items = Array.prototype.slice.call(document.querySelectorAll("li.chat"));
+  var btn = document.getElementById("next");
+  var prog = document.getElementById("prog");
+  var tip = document.getElementById("tip");
+  var blocked = 0;
+  function remaining() {
+    return items.filter(function (li) {
+      return li.offsetParent !== null && !li.classList.contains("opened");
+    });
+  }
+  function update() {
+    var opened = 0;
+    items.forEach(function (li) { if (li.classList.contains("opened")) opened++; });
+    var left = remaining().length;
+    prog.textContent = opened === items.length
+      ? "All " + items.length + " chats opened \\u2713"
+      : opened + " of " + items.length + " opened \\u00b7 " + left + " to go";
+    btn.disabled = remaining().length === 0;
+  }
+  function mark(li) {
+    li.classList.add("opened");
+    li.querySelector("a.open").textContent = "Opened \\u2713";
+  }
+  btn.addEventListener("click", function () {
+    var batch = remaining().slice(0, 10);
+    for (var i = 0; i < batch.length; i++) {
+      var w = window.open(batch[i].querySelector("a.open").href, "_blank");
+      if (w) mark(batch[i]);
+      else blocked++;
+    }
+    if (blocked > 0) tip.className = "tip show";
+    update();
+  });
+  items.forEach(function (li) {
+    li.querySelector("a.open").addEventListener("click", function () { mark(li); update(); });
+  });
+  document.getElementById("q").addEventListener("input", function (e) {
+    var q = e.target.value.trim().toLowerCase();
+    items.forEach(function (li) {
+      li.style.display = li.getAttribute("data-title").indexOf(q) !== -1 ? "" : "none";
+    });
+    update();
+  });
+  update();
+})();
+</script>
+</body>
+</html>
+""")
 
 
 # --------------------------------------------------------------------------
@@ -287,6 +417,40 @@ def safe_name(title):
     return re.sub(r"[^\w\s.-]", "", title or "untitled")[:50].strip().replace(" ", "_")
 
 
+def render_reopen_page(chats, outdir, email, msg_counts=None):
+    """Write reopen-chats.html - a plain-words, big-type index of every
+    recovered chat that reopens it on the website with one click."""
+    msg_counts = msg_counts or {}
+    esc = lambda s: html.escape(str(s), quote=True)
+    items = []
+    for c in chats:
+        cid = c["id"]
+        title = c.get("title") or "(untitled)"
+        segs = []
+        t = pt_time(c.get("updated_at"))
+        if t:
+            segs.append("updated " + t)
+        if msg_counts.get(cid):
+            segs.append(f"{msg_counts[cid]} messages")
+        meta = (f'<div class="d">{esc(" · ".join(segs))}</div>' if segs else "")
+        items.append(
+            '<li class="chat" data-title="%s">\n'
+            '  <div class="meta"><div class="t">%s</div>%s</div>\n'
+            '  <a class="open" href="https://chat.z.ai/c/%s" target="_blank" rel="noopener">Open &#8594;</a>\n'
+            '</li>'
+            % (esc(title.lower()), esc(title), meta, cid)
+        )
+    n = len(chats)
+    page = REOPEN_PAGE.substitute(
+        COUNTLABEL=f"{n} chat" + ("" if n == 1 else "s"),
+        ACCOUNT=esc(email or "your z.ai account"),
+        ITEMS="\n".join(items),
+        GENERATED=datetime.datetime.now(PT_OFFSET).strftime("%Y-%m-%d %H:%M") + " PT",
+    )
+    with open(os.path.join(outdir, "reopen-chats.html"), "w", encoding="utf-8") as fh:
+        fh.write(page)
+
+
 def render_chat(chat_meta, detail, outdir):
     messages = (detail.get("chat") or {}).get("history", {}).get("messages", {})
     order = linearize(messages)
@@ -329,6 +493,9 @@ def main():
     ap.add_argument("--token", help="session token (JWT) if auto-discovery fails")
     ap.add_argument("--out", default=None, help="output folder (default: zai-chat-recovery-<date>)")
     ap.add_argument("--limit", type=int, default=0, help="recover only the N most recent chats (testing)")
+    ap.add_argument("--open", type=int, default=0, metavar="N",
+                    help="after saving, open the N most recent chats in your default browser "
+                         "(the browser must be logged in to chat.z.ai)")
     args = ap.parse_args()
 
     print("Z.ai chat recovery (read-only). Requests go to chat.z.ai only.\n")
@@ -388,6 +555,7 @@ def main():
     os.makedirs(outdir, exist_ok=True)
 
     index_lines, url_lines, done, failed = [], [], 0, 0
+    msg_counts = {}
     for c in chats:
         cid = c["id"]
         try:
@@ -406,6 +574,7 @@ def main():
                 json.dump(detail, fh, indent=2, ensure_ascii=False)
             fname, n = render_chat(c, detail, outdir)
             done += 1
+            msg_counts[cid] = n
             t = pt_time(c.get("updated_at"))
             index_lines.append(f"- [{c.get('title')}]({fname}) - {n} messages, updated {t}")
             url_lines.append(f"| {len(index_lines)} | {c.get('title')} | {t} "
@@ -423,11 +592,23 @@ def main():
     with open(os.path.join(outdir, "chat-urls.md"), "w", encoding="utf-8") as fh:
         fh.write("# Direct chat URLs\n\n| # | Title | Updated | URL |\n|---|---|---|---|\n"
                  + "\n".join(url_lines) + "\n")
+    render_reopen_page(chats, outdir, email, msg_counts)
 
     print(f"\nDone. {done} chats recovered, {failed} failed.")
     print(f"Output folder: {os.path.abspath(outdir)}")
-    print("Open INDEX.md first. chat-urls.md has the direct URLs - these work in")
-    print("your browser even while the sidebar is broken.")
+    print("Open INDEX.md first. reopen-chats.html is the one-click way back to your")
+    print("chats on the website - it works even while the sidebar list is empty.")
+    print("Or rerun with --open 10 to reopen the 10 newest chats in your browser.")
+
+    if args.open > 0 and chats:
+        n = min(args.open, len(chats))
+        print(f"\nOpening the {n} most recent chat(s) in your default browser, one per tab.")
+        print(f"Make sure that browser is logged in to chat.z.ai as {email}.")
+        for c in chats[:n]:
+            print(f"  opening: {(c.get('title') or 'untitled')[:50]}")
+            webbrowser.open(f"https://chat.z.ai/c/{c['id']}", new=2)
+            time.sleep(0.8)
+        print("If a tab shows a sign-in page: log in there, then reopen it from reopen-chats.html.")
     return 0
 
 

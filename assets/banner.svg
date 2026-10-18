@@ -1,31 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-label="Z.ai Chat Recovery banner">
   <rect width="1280" height="360" rx="18" fill="#F5F5F7"/>
   <g font-family="Segoe UI, system-ui, -apple-system, sans-serif">
-    <!-- echo of the app's two buttons -->
+    <!-- echo of the app: the five plain-word tabs on the left -->
     <g>
-      <rect x="920" y="70" width="270" height="52" rx="12" fill="#007AFF"/>
-      <text x="1055" y="103" fill="#FFFFFF" font-size="18" font-weight="600" text-anchor="middle">Check my chats</text>
-      <rect x="920" y="140" width="270" height="52" rx="12" fill="#FFFFFF" stroke="#E5E5EA"/>
-      <text x="1055" y="173" fill="#1D1D1F" font-size="18" font-weight="600" text-anchor="middle">Save all my chats</text>
-      <rect x="920" y="210" width="270" height="52" rx="12" fill="#FFFFFF" stroke="#E5E5EA"/>
-      <text x="1055" y="243" fill="#1D1D1F" font-size="18" font-weight="600" text-anchor="middle">Read my chats</text>
+      <rect x="900" y="52" width="300" height="256" rx="14" fill="#FFFFFF" stroke="#E5E5EA"/>
+      <rect x="916" y="68" width="268" height="48" rx="10" fill="#E5F1FF"/>
+      <text x="936" y="99" fill="#007AFF" font-size="17" font-weight="700">Recover my chats</text>
+      <text x="936" y="147" fill="#1D1D1F" font-size="17">Read my chats</text>
+      <text x="936" y="185" fill="#1D1D1F" font-size="17">Check my backups</text>
+      <text x="936" y="223" fill="#1D1D1F" font-size="17">Dos and don&#8217;ts</text>
+      <text x="936" y="261" fill="#1D1D1F" font-size="17">Settings</text>
     </g>
 
     <rect x="64" y="58" width="44" height="44" rx="10" fill="#007AFF"/>
     <path d="M76 80 l8 8 14 -16" stroke="#FFFFFF" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 
     <text x="64" y="146" fill="#1D1D1F" font-size="44" font-weight="700">Z.ai Chat Recovery</text>
-    <text x="64" y="192" fill="#86868B" font-size="21">Your chat list looks empty. Your chats are almost certainly still there.</text>
-    <text x="64" y="224" fill="#86868B" font-size="21">This free app checks, saves them to your computer, and helps you read them.</text>
+    <text x="64" y="192" fill="#6E6E73" font-size="21">Your chat list looks empty. Your chats are almost certainly still there.</text>
+    <text x="64" y="224" fill="#6E6E73" font-size="21">This free app checks, saves them, and puts every chat one click away.</text>
 
     <g font-size="15" font-weight="600">
       <rect x="64" y="258" width="76" height="34" rx="17" fill="#FFFFFF" stroke="#E5E5EA"/>
       <text x="102" y="280" fill="#1D1D1F" text-anchor="middle">Free</text>
       <rect x="152" y="258" width="238" height="34" rx="17" fill="#FFFFFF" stroke="#E5E5EA"/>
-      <text x="271" y="280" fill="#1D1D1F" text-anchor="middle">Reads only — never deletes</text>
+      <text x="271" y="280" fill="#1D1D1F" text-anchor="middle">Reads only &#8212; never deletes</text>
       <rect x="402" y="258" width="250" height="34" rx="17" fill="#FFFFFF" stroke="#E5E5EA"/>
-      <text x="527" y="280" fill="#1D1D1F" text-anchor="middle">Windows · Mac · Linux</text>
+      <text x="527" y="280" fill="#1D1D1F" text-anchor="middle">Windows &#183; Mac &#183; Linux</text>
     </g>
-    <text x="64" y="330" fill="#86868B" font-size="14">Free and open source · everything happens on your computer</text>
+    <text x="64" y="330" fill="#6E6E73" font-size="14">Free and open source &#183; everything happens on your computer</text>
   </g>
 </svg>
