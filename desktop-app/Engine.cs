@@ -95,6 +95,157 @@ internal static class BrowserMatrix
 
 internal sealed record AttachmentExtract(string Kind, string? Url, string? Name);
 
+/// <summary>Minimal LevelDB .ldb reader: footer -> index block -> per-block
+/// Snappy decompression. Chrome compacts localStorage out of the raw-readable
+/// .log into Snappy-compressed table blocks; without this, token discovery
+/// goes blind once the login is older than the current .log and the app
+/// wrongly reports "no sign-in". Pure managed, no dependencies.</summary>
+internal static class Leveldb
+{
+    /// <summary>Raw-format Snappy decompression (the subset LevelDB uses).
+    /// Returns null on any malformed input.</summary>
+    internal static byte[]? SnappyDecompress(ReadOnlySpan<byte> d)
+    {
+        try
+        {
+            int pos = 0; uint length = 0; int shift = 0;
+            while (true)
+            {
+                if (pos >= d.Length) return null;
+                byte b = d[pos++];
+                length |= (uint)((b & 0x7f) << shift);
+                if ((b & 0x80) == 0) break;
+                shift += 7;
+                if (shift > 28) return null;
+            }
+            var result = new byte[length];
+            int o = 0;
+            while (pos < d.Length && o < length)
+            {
+                byte tag = d[pos++];
+                switch (tag & 3)
+                {
+                    case 0: // literal
+                    {
+                        uint n = (uint)(tag >> 2) + 1;
+                        if ((tag >> 2) >= 60)
+                        {
+                            int nb = (tag >> 2) - 59;
+                            if (pos + nb > d.Length) return null;
+                            uint v = 0;
+                            for (int i = 0; i < nb; i++) v |= (uint)(d[pos + i] << (8 * i));
+                            pos += nb;
+                            n = v + 1;
+                        }
+                        if (n > (uint)(d.Length - pos) || (ulong)o + n > length) return null;
+                        d.Slice(pos, (int)n).CopyTo(result.AsSpan(o));
+                        pos += (int)n; o += (int)n;
+                        break;
+                    }
+                    case 1: // copy, 1-byte offset
+                    {
+                        if (pos >= d.Length) return null;
+                        int len = ((tag >> 2) & 7) + 4;
+                        int off = ((tag >> 5) << 8) | d[pos++];
+                        if (off <= 0 || off > o) return null;
+                        for (int i = 0; i < len && o < length; i++, o++) result[o] = result[o - off];
+                        break;
+                    }
+                    case 2: // copy, 2-byte offset
+                    {
+                        if (pos + 2 > d.Length) return null;
+                        int len = (tag >> 2) + 1;
+                        int off = d[pos] | (d[pos + 1] << 8); pos += 2;
+                        if (off <= 0 || off > o) return null;
+                        for (int i = 0; i < len && o < length; i++, o++) result[o] = result[o - off];
+                        break;
+                    }
+                    default: // copy, 4-byte offset
+                    {
+                        if (pos + 4 > d.Length) return null;
+                        int len = (tag >> 2) + 1;
+                        int off = d[pos] | (d[pos + 1] << 8) | (d[pos + 2] << 16) | (d[pos + 3] << 24); pos += 4;
+                        if (off <= 0 || off > o) return null;
+                        for (int i = 0; i < len && o < length; i++, o++) result[o] = result[o - off];
+                        break;
+                    }
+                }
+            }
+            return o == length ? result : null;
+        }
+        catch { return null; }
+    }
+
+    private static (int Value, int Pos) Varint(byte[] b, int pos)
+    {
+        int r = 0, s = 0;
+        while (true)
+        {
+            if (pos >= b.Length) throw new IOException("varint past end");
+            byte v = b[pos++];
+            r |= (v & 0x7f) << s;
+            if ((v & 0x80) == 0) return (r, pos);
+            s += 7;
+        }
+    }
+
+    /// <summary>Yield every Snappy-compressed data block of a .ldb table.</summary>
+    internal static IEnumerable<byte[]> SnappyBlocks(string path)
+    {
+        var handles = new List<(int off, int size)>();
+        byte[] data = Array.Empty<byte>();
+        try
+        {
+            data = File.ReadAllBytes(path);
+            if (data.Length < 48) yield break;
+            var magic = new byte[] { 0x57, 0xfb, 0x80, 0x8b, 0x24, 0x75, 0x47, 0xdb };
+            bool ok = true;
+            for (int i = 0; i < 8; i++)
+                if (data[data.Length - 8 + i] != magic[i]) { ok = false; break; }
+            if (!ok) yield break;
+
+            int pos = data.Length - 48;
+            (_, pos) = Varint(data, pos);   // metaindex handle (unused)
+            (_, pos) = Varint(data, pos);
+            (int ioff, pos) = Varint(data, pos);
+            (int isize, pos) = Varint(data, pos);
+            if (ioff < 0 || isize <= 0 || ioff + isize + 5 > data.Length) yield break;
+            byte itype = data[ioff + isize];
+            byte[]? idx = itype == 1
+                ? SnappyDecompress(new ReadOnlySpan<byte>(data, ioff, isize))
+                : data[ioff..(ioff + isize)];
+            if (idx is null || idx.Length < 8) yield break;
+
+            int nRestarts = BitConverter.ToInt32(idx, idx.Length - 4);
+            int entriesEnd = idx.Length - 4 - 4 * nRestarts;
+            if (nRestarts < 0 || entriesEnd <= 0 || entriesEnd > idx.Length) yield break;
+
+            int p = 0;
+            while (p < entriesEnd)
+            {
+                (int shared, p) = Varint(idx, p);
+                (int nonShared, p) = Varint(idx, p);
+                (int valLen, p) = Varint(idx, p);
+                if (shared > 64 || nonShared < 0 || valLen <= 0 || p + nonShared + valLen > entriesEnd) break;
+                int q = p + nonShared;
+                (int hoff, q) = Varint(idx, q);
+                (int hsize, q) = Varint(idx, q);
+                p += nonShared + valLen;
+                if (hoff + hsize + 5 > data.Length) continue;
+                if (data[hoff + hsize] == 1)   // 1 = Snappy; type-0 is visible to raw scans
+                    handles.Add((hoff, hsize));
+            }
+        }
+        catch { yield break; }
+        // decompress from the same buffer the offsets were parsed against
+        foreach (var (off, size) in handles)
+        {
+            var blk = SnappyDecompress(new ReadOnlySpan<byte>(data, off, size));
+            if (blk is { Length: > 0 }) yield return blk;
+        }
+    }
+}
+
 internal sealed record AttachmentView(string Kind, string? Path, string Name, long Size, bool Missing);
 
 internal sealed record BlockRender(string Vis, string Think, string Tools, List<AttachmentExtract> Attachments);
@@ -209,12 +360,12 @@ internal static class Recovery
         return ms.ToArray();
     }
 
-    private static void ScanFile(byte[] data, string where, long mtime, List<TokenCandidate> found)
+    private static void ScanFile(byte[] data, string where, long mtime, int posBase, List<TokenCandidate> found)
     {
         var hits = new HashSet<(int, string)>();
         foreach (var blob in new[] { Encoding.ASCII.GetString(data), Encoding.Unicode.GetString(data) })
             foreach (Match m in JwtRe.Matches(blob))
-                hits.Add((m.Index, m.Value));
+                hits.Add((posBase + m.Index, m.Value));
         foreach (var (pos, tok) in hits)
         {
             var email = JwtEmail(tok) ?? "unknown";
@@ -231,15 +382,21 @@ internal static class Recovery
             foreach (var f in Directory.GetFiles(leveldb))
             {
                 var name = Path.GetFileName(f);
-                if (!name.EndsWith(".log", StringComparison.OrdinalIgnoreCase) &&
-                    !name.EndsWith(".ldb", StringComparison.OrdinalIgnoreCase)) continue;
-                try { ScanFile(ReadAllSharing(f), $"{label}/{name}", new FileInfo(f).LastWriteTimeUtc.Ticks, found); }
+                bool isLdb = name.EndsWith(".ldb", StringComparison.OrdinalIgnoreCase);
+                if (!isLdb && !name.EndsWith(".log", StringComparison.OrdinalIgnoreCase)) continue;
+                long mtime = new FileInfo(f).LastWriteTimeUtc.Ticks;
+                try { ScanFile(ReadAllSharing(f), $"{label}/{name}", mtime, 0, found); }
                 catch (IOException) { }
+                if (!isLdb) continue;
+                // compacted records live in Snappy-compressed table blocks
+                int bi = 0;
+                foreach (var blk in Leveldb.SnappyBlocks(f))
+                    ScanFile(blk, $"{label}/{name}", mtime, ++bi * 1_000_000, found);
             }
         }
         foreach (var (sqlite, label) in BrowserMatrix.FirefoxStorage())
         {
-            try { ScanFile(ReadAllSharing(sqlite), label, new FileInfo(sqlite).LastWriteTimeUtc.Ticks, found); }
+            try { ScanFile(ReadAllSharing(sqlite), label, new FileInfo(sqlite).LastWriteTimeUtc.Ticks, 0, found); }
             catch (IOException) { }
         }
         // best first: real (non-guest) identities, newest file, highest offset

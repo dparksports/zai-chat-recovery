@@ -25,6 +25,19 @@ otherwise.
 - Tokens carry no `exp` claim; the only validity test is calling the API.
   Candidates are ordered: real (non-guest) identities first, newest file and
   highest byte offset first — and validated in order until one returns 200.
+- **The Snappy trap (2026-10-18, Windows 11 26H2 + current Chrome):** Chrome
+  compacts localStorage records out of the raw-readable `.log` into
+  **Snappy-compressed blocks** inside the `.ldb` table files. A plain byte
+  scan only sees a token while it is fresh in the active `.log`; once
+  compaction rewrites it, the sign-in becomes invisible and the app wrongly
+  reports "no sign-in found" even though the browser is happily logged in.
+  Both scanners now read `.ldb` tables properly (footer → index block →
+  per-block Snappy decompress, `ldb_snappy_blocks()` in Python and the
+  managed `Leveldb` class in C# — no dependencies in either). Block hits are
+  ranked above raw hits within the same file (block index × 1M + offset),
+  which matters because the newest copy of the token is usually the
+  compacted one. Verified live: the same Chrome profile went from
+  "3 candidates, no valid token" to "17 candidates, account found, 23 chats".
 - Guest trap: the web app silently falls back to a `guest-…@guest.com`
   session whose empty chat list looks exactly like total history loss.
 

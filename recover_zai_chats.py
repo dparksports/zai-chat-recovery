@@ -54,6 +54,7 @@ import json
 import os
 import re
 import string
+import struct
 import sys
 import time
 import urllib.error
@@ -232,6 +233,113 @@ def jwt_email(tok):
         return "unknown"
 
 
+# --- leveldb .ldb reading (Snappy blocks) ---------------------------------
+# Chrome compacts localStorage records out of the raw-readable .log into
+# Snappy-compressed blocks of .ldb table files. A plain byte scan only sees
+# the token while it is fresh in the .log; after compaction it goes invisible
+# and the app would wrongly report "no sign-in". These helpers read the table
+# properly: footer -> index block -> per-block Snappy decompress. Pure stdlib.
+
+def _varint(buf, pos):
+    r = 0
+    s = 0
+    while True:
+        b = buf[pos]
+        pos += 1
+        r |= (b & 0x7F) << s
+        s += 7
+        if not (b & 0x80):
+            return r, pos
+
+
+def snappy_decompress(data):
+    """Raw-format Snappy decompression (the subset LevelDB uses)."""
+    pos = 0
+    length = 0
+    shift = 0
+    while True:
+        b = data[pos]
+        pos += 1
+        length |= (b & 0x7F) << shift
+        shift += 7
+        if not (b & 0x80):
+            break
+    out = bytearray()
+    while pos < len(data) and len(out) < length:
+        tag = data[pos]
+        t = tag & 3
+        if t == 0:  # literal
+            n = (tag >> 2) + 1
+            if n > 60:  # length follows in 1..4 bytes
+                nb = (tag >> 2) - 59
+                n = int.from_bytes(data[pos + 1:pos + 1 + nb], "little") + 1
+                pos += 1 + nb
+            else:
+                pos += 1
+            out += data[pos:pos + n]
+            pos += n
+        else:  # copy (back-reference)
+            if t == 1:
+                ln = ((tag >> 2) & 7) + 4
+                off = ((tag >> 5) << 8) | data[pos + 1]
+                pos += 2
+            elif t == 2:
+                ln = (tag >> 2) + 1
+                off = int.from_bytes(data[pos + 1:pos + 3], "little")
+                pos += 3
+            else:
+                ln = (tag >> 2) + 1
+                off = int.from_bytes(data[pos + 1:pos + 4], "little")
+                pos += 4
+            if off == 0 or off > len(out):
+                raise ValueError("bad snappy back-reference")
+            for _ in range(ln):
+                out.append(out[-off])
+    if len(out) != length:
+        raise ValueError("snappy length mismatch")
+    return bytes(out)
+
+
+def ldb_snappy_blocks(path):
+    """Yield every Snappy-compressed data block of a .ldb table file."""
+    try:
+        data = open(path, "rb").read()
+        if len(data) < 48 or data[-8:] != struct.pack("<Q", 0xDB4775248B80FB57):
+            return
+        footer = data[-48:]
+        pos = 0
+        _, pos = _varint(footer, pos)  # metaindex handle (unused)
+        _, pos = _varint(footer, pos)
+        ioff, pos = _varint(footer, pos)
+        isize, pos = _varint(footer, pos)
+        itype = data[ioff + isize]
+        idx = snappy_decompress(data[ioff:ioff + isize]) if itype == 1 else data[ioff:ioff + isize]
+        n_restarts = int.from_bytes(idx[-4:], "little")
+        entries_end = len(idx) - 4 - 4 * n_restarts  # restart array trails entries
+        p = 0
+        while p < entries_end:
+            shared, p = _varint(idx, p)
+            non_shared, p = _varint(idx, p)
+            val_len, p = _varint(idx, p)
+            if shared > 64 or p + non_shared + val_len > entries_end:
+                break
+            p += non_shared
+            handle = idx[p:p + val_len]
+            p += val_len
+            if not handle:
+                continue
+            hoff, q = _varint(handle, 0)
+            hsize, q = _varint(handle, q)
+            if hoff + hsize + 5 > len(data) or data[hoff + hsize] != 1:
+                continue  # only Snappy blocks hold surprises; raw scan covers the rest
+            try:
+                yield snappy_decompress(data[hoff:hoff + hsize])
+            except Exception:
+                continue
+    except Exception:
+        return
+
+
 def find_token_candidates():
     """Scan Chromium local-storage leveldb files for JWT-shaped tokens.
 
@@ -251,17 +359,25 @@ def find_token_candidates():
                     data = open(f, "rb").read()
                 except OSError:
                     continue
+                mtime = os.path.getmtime(f)
                 hits = set()
                 for blob in (data.decode("ascii", "ignore"),
                              data.decode("utf-16le", "ignore")):
                     hits |= {(m.start(), m.group()) for m in JWT_RE.finditer(blob)}
+                # compacted records: Snappy-compressed blocks of the .ldb tables
+                if base.endswith(".ldb"):
+                    for bi, blk in enumerate(ldb_snappy_blocks(f)):
+                        for blob in (blk.decode("ascii", "ignore"),
+                                     blk.decode("utf-16le", "ignore")):
+                            hits |= {(1_000_000 * (bi + 1) + m.start(), m.group())
+                                     for m in JWT_RE.finditer(blob)}
                 for pos, tok in hits:
                     email = jwt_email(tok)
                     # z.ai tokens carry an email claim; skip foreign JWTs early
                     if email == "unknown":
                         continue
                     found.append({
-                        "mtime": os.path.getmtime(f), "pos": pos, "token": tok,
+                        "mtime": mtime, "pos": pos, "token": tok,
                         "email": email, "where": f"{name}/{profile}/{base}",
                     })
     # Firefox keeps site localStorage in webappsstore.sqlite (unencrypted)
