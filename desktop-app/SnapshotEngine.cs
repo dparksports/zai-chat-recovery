@@ -179,11 +179,15 @@ internal static class Snapshots
               string.Join(" · ", r.Problems.Take(5));
 }
 
-/// <summary>Monthly automatic backup: Windows Task Scheduler, cron elsewhere.
-/// The app runs itself with --auto-backup on the first of each month.</summary>
+/// <summary>Monthly backup reminder: Windows Task Scheduler, cron elsewhere.
+/// On the first of each month the app opens itself with --backup-reminder and
+/// shows a nudge - it never contacts z.ai until the user presses a button.
+/// Legacy schedules registered --auto-backup; both flags are honored, and any
+/// toggle rewrites the schedule to the new flag.</summary>
 internal static class Scheduler
 {
     private const string TaskName = "ZaiChatRecoveryMonthlyBackup";
+    private const string Flag = "--backup-reminder";
     private static string ExePath => Environment.ProcessPath ?? "";
 
     public static bool IsScheduled()
@@ -192,7 +196,8 @@ internal static class Scheduler
         {
             if (OperatingSystem.IsWindows())
                 return Run("schtasks", $"/Query /TN {TaskName}", out _) == 0;
-            return Run("crontab", "-l", out var cron) == 0 && cron.Contains("--auto-backup");
+            return Run("crontab", "-l", out var cron) == 0
+                && (cron.Contains(Flag) || cron.Contains("--auto-backup"));
         }
         catch { return false; }
     }
@@ -204,13 +209,15 @@ internal static class Scheduler
             if (OperatingSystem.IsWindows())
             {
                 var code = enable
-                    ? Run("schtasks", $"/Create /F /TN {TaskName} /TR \"\\\"{ExePath}\\\" --auto-backup\" /SC MONTHLY /ST 21:00", out _)
+                    ? Run("schtasks", $"/Create /F /TN {TaskName} /TR \"\\\"{ExePath}\\\" {Flag}\" /SC MONTHLY /ST 21:00", out _)
                     : Run("schtasks", $"/Delete /F /TN {TaskName}", out _);
                 return code == 0;
             }
             // macOS / Linux: maintain our marked line in the user crontab
+            // (strip legacy --auto-backup lines too, so toggling migrates them)
             var existing = Run("crontab", "-l", out var cron) == 0 ? cron : "";
-            var kept = string.Join("\n", existing.Split('\n').Where(l => !l.Contains("--auto-backup")));
+            var kept = string.Join("\n", existing.Split('\n')
+                .Where(l => !l.Contains(Flag) && !l.Contains("--auto-backup")));
             if (!enable)
             {
                 var psi = new ProcessStartInfo("crontab") { RedirectStandardInput = true, UseShellExecute = false };
@@ -220,7 +227,7 @@ internal static class Scheduler
                 p.WaitForExit(5000);
                 return p.ExitCode == 0;
             }
-            var line = $"0 21 1 * * \"{ExePath}\" --auto-backup >> \"$HOME/.zai-autobackup.log\" 2>&1";
+            var line = $"0 21 1 * * \"{ExePath}\" {Flag} >> \"$HOME/.zai-backup-reminder.log\" 2>&1";
             var psi2 = new ProcessStartInfo("crontab") { RedirectStandardInput = true, UseShellExecute = false };
             using var p2 = Process.Start(psi2)!;
             p2.StandardInput.Write(kept + "\n" + line + "\n");

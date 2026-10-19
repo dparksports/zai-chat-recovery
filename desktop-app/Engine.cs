@@ -477,6 +477,36 @@ internal static class Recovery
         return chats;
     }
 
+    public sealed record WebsiteStatus(string Email, List<string> ChatIds, string NewestUpdated);
+
+    /// <summary>One on-demand query: find a working sign-in in browser storage,
+    /// ask the website for the chat list, return just enough to compare with
+    /// the newest backup. The only caller is a button press - the app never
+    /// runs this on its own. Null means no working non-guest sign-in.</summary>
+    public static async Task<WebsiteStatus?> QueryWebsiteNowAsync(Action<string>? log = null)
+    {
+        foreach (var c in FindTokenCandidates())
+        {
+            if (c.Email.StartsWith("guest-", StringComparison.Ordinal))
+            {
+                log?.Invoke("  skipping a guest sign-in - guest mode has its own, empty chat list");
+                continue;
+            }
+            log?.Invoke($"  trying: {c.Email}  ({c.Where})");
+            if (!await TryUseTokenAsync(c.Token)) continue;
+            log?.Invoke($"Signed in as {AccountEmail}.");
+            var chats = await ListAllChatsAsync();
+            long newest = 0;
+            foreach (var ch in chats)
+                if (ch.TryGetProperty("updated_at", out var u) && u.ValueKind == JsonValueKind.Number
+                        && u.GetInt64() > newest)
+                    newest = u.GetInt64();
+            return new WebsiteStatus(AccountEmail ?? "(unknown)",
+                chats.Select(c => c.GetProperty("id").GetString() ?? "").ToList(), PtTimeMs(newest));
+        }
+        return null;
+    }
+
     public static async Task<JsonElement> GetChatDetailAsync(string id)
     {
         var raw = await ApiSendAsync(HttpMethod.Get, $"/chats/{id}", null, Token!);

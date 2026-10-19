@@ -29,7 +29,7 @@ Everything lives behind five plain-word tabs on the left:
 | **Photos & files** | Shows saved photos and files; re-downloads missing ones |
 | **Check my backups** | Proves every saved file is intact |
 | **Dos and don'ts** | Calm advice if the list goes empty again |
-| **Settings** | Bigger text, monthly backups, technical details |
+| **Settings** | Bigger text, a monthly reminder, technical details |
 
 > **One thing first:** make sure you've logged in to [chat.z.ai](https://chat.z.ai) in your browser at least once on this computer. Your chats live in that account — the app uses that saved sign-in to reach them.
 
@@ -97,7 +97,8 @@ The **"Photos & files"** tab shows, in plain words, how many photos and files ea
 
 Every time you save, the app creates a **new backup folder with the date on it** — like `Z.ai Backups/2026-10-18 2030`. Older backups are never touched or changed, so you can always go back to any day.
 
-- **"Remember for me — back up every month"** (in Settings) — one checkbox, and the app backs up your chats automatically on the first of each month. No reminders to set, nothing to remember.
+- **"Remind me on the first of each month"** (in Settings) — one checkbox, and on the first of each month the app opens itself with a nudge to back up. It never contacts the website until you press a button — no reminders to set, nothing to remember.
+- **"Check the website now"** — back from a trip? This button (the Recover tab's main button, once you have a backup) compares the website with your newest backup and tells you in plain words how many chats aren't saved yet. It asks only when you press it, and shows when you last asked.
 - **Unchanged chats cost nothing.** If a chat is the same as last month, the two backups share it quietly under the hood — you still see complete, independent folders for every date.
 - **"Check my backups"** — its own tab. It re-checks every file in every dated backup against its built-in integrity list and tells you in plain words: *"All 100 files across 2 backups verified — everything is intact."* It runs by itself the first time you look. If anything ever gets damaged or deleted, it names the file and the date it can be recovered from.
 - **Go back in time.** In the reader, the **Backup date** picker shows every saved date. Pick an older one to see your chats exactly as they were that day — and everything works there too: reading, copying, even restoring a chat back to your account from any date.
@@ -110,7 +111,7 @@ Settings → **Text size** makes the whole app bigger — Normal, Large, or Larg
 
 | What you see | What to do |
 |---|---|
-| "Sign in first" | Open chat.z.ai in your browser, log in (not as guest), come back — the app re-checks by itself. |
+| "Sign in first" | Open chat.z.ai in your browser, log in (not as guest), come back and press **Try again**. |
 | "This account has no chats" | Check the email at the top of the chat.z.ai website — Google and email sign-ins can be different accounts. Log in with the one that had your chats, then press Try again. |
 | Mac says the app can't be opened | Follow **"Mac: how to open it the first time"** above — you approve the app once in Privacy & Security, then it opens normally. |
 | Where did my chats go? | Almost always: nowhere. It's a website display problem. This app proves it in ten seconds. |
@@ -118,7 +119,7 @@ Settings → **Text size** makes the whole app bigger — Normal, Large, or Larg
 
 ## Your privacy, in one sentence
 
-Everything happens on your computer; the app only ever talks to chat.z.ai, only ever reads (except the one restore button you explicitly approve), and your sign-in never leaves your machine.
+Everything happens on your computer; the app only ever talks to chat.z.ai when you press a button, only ever reads (except the one restore button you explicitly approve), and your sign-in never leaves your machine.
 
 ## For developers and tinkerers
 

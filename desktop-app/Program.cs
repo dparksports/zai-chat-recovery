@@ -31,6 +31,10 @@ internal static class Program
 
     internal static bool UiSmokeMode;
 
+    /// <summary>Launched by the monthly schedule: show the backup nudge and
+    /// wait. No request leaves this machine until the user presses a button.</summary>
+    internal static bool BackupReminder;
+
     /// <summary>UI regression run: render every tab in several orders -
     /// users start everywhere, and the crash class this catches ("control
     /// already has a visual parent" on tab revisit) only shows on the second
@@ -85,50 +89,14 @@ internal static class Program
                 Console.Out.Write($"linked {linked} files, {saved} bytes shared");
                 return 0;
             }
-            if (args[i].Equals("--auto-backup", StringComparison.OrdinalIgnoreCase))
-                return AutoBackupHeadless();
         }
-        if (args.Contains("--auto-backup", StringComparer.OrdinalIgnoreCase))
-            return AutoBackupHeadless();
+        // Monthly reminder (scheduled): open the window with a nudge. The old
+        // --auto-backup flag did a headless backup here - schedules registered
+        // before this change are honored with the same gentle behavior.
+        if (args.Contains("--backup-reminder", StringComparer.OrdinalIgnoreCase)
+            || args.Contains("--auto-backup", StringComparer.OrdinalIgnoreCase))
+            BackupReminder = true;
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
-    }
-
-    /// <summary>Monthly automatic backup (scheduled): snapshot everything to a new
-    /// dated folder, dedupe against the previous snapshot, write the manifest.</summary>
-    private static int AutoBackupHeadless()
-    {
-        var sb = new StringBuilder();
-        try
-        {
-            if (FindWorkingToken() is null)
-            {
-                sb.AppendLine("result: NO VALID TOKEN (open chat.z.ai, log in; the next scheduled run will retry)");
-                WriteResult("zai-autobackup.txt", sb);
-                return 2;
-            }
-            var prev = Snapshots.Latest();
-            var dir = Snapshots.NextSnapshotDir();
-            Directory.CreateDirectory(dir);
-            var summary = Recovery.RecoverAllAsync(dir, 0, _ => { }, (_, _, _) => Task.CompletedTask).GetAwaiter().GetResult();
-            var (linked, _) = Snapshots.Deduplicate(dir, prev);
-            Snapshots.WriteManifest(dir);
-            try
-            {
-                var settings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ZaiChatRecovery");
-                Directory.CreateDirectory(settings);
-                File.WriteAllText(Path.Combine(settings, "last-backup.txt"), dir);
-            }
-            catch { }
-            sb.AppendLine($"result: OK, {summary.Done} chats, {summary.Attachments} attachments, snapshot {Path.GetFileName(dir)} ({linked} files shared with previous)");
-            WriteResult("zai-autobackup.txt", sb);
-            return 0;
-        }
-        catch (Exception ex)
-        {
-            sb.AppendLine("result: EXCEPTION " + ex.Message);
-            WriteResult("zai-autobackup.txt", sb);
-            return 3;
-        }
     }
 
     private static int VerifyHeadless(string root)
@@ -291,14 +259,14 @@ internal sealed class MainWindow : Window
     private readonly Button _openBtn = new() { Content = "Open the folder" };
     private readonly Button _verifyBtn = new() { Content = "Check my backups" };
     private readonly Button _scaleBtn = new() { Content = "Text size: Normal" };
-    private readonly CheckBox _autoBox = new() { Content = "Remember for me — back up every month", FontSize = Ui.Meta };
+    private readonly CheckBox _autoBox = new() { Content = "Remind me on the first of each month", FontSize = Ui.Meta };
     private readonly ProgressBar _bar = new() { Height = 10, Minimum = 0, Maximum = 100, Value = 0, IsVisible = false };
     private readonly TextBlock _progressWords = new() { FontSize = Ui.Body, TextWrapping = TextWrapping.Wrap, Foreground = Ui.Brush(Ui.Muted), IsVisible = false };
     private readonly TextBlock _folderLabel = new() { Foreground = Ui.Brush(Ui.Muted), TextWrapping = TextWrapping.Wrap, FontSize = Ui.Small };
+    private readonly TextBlock _lastChecked = new() { Foreground = Ui.Brush(Ui.Muted), TextWrapping = TextWrapping.Wrap, FontSize = Ui.Small };
     private readonly TextBox _log = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, FontSize = Ui.Small, Height = 220 };
     private string? _backupDir;
     private string _outDir = "";
-    private bool _autoRescan;
     private bool _busy;
     private Func<Task>? _primaryAction;
 
@@ -356,26 +324,32 @@ internal sealed class MainWindow : Window
         {
             var want = _autoBox.IsChecked == true;
             if (Scheduler.SetScheduled(want))
-                Log(want ? "Monthly automatic backup scheduled (first of each month, 9 PM)."
-                         : "Automatic backup turned off.");
+                Log(want ? "Monthly reminder scheduled (first of each month, 9 PM). The app opens with a nudge - nothing is sent to the website until you press a button."
+                         : "Monthly reminder turned off.");
             else
             {
                 _autoBox.IsChecked = !want;
-                Log("Could not change the schedule on this system - monthly backups can still be run by hand.");
+                Log("Could not change the schedule on this system - the app can still remind you whenever you open it.");
             }
         };
-        Activated += async (_, _) => { if (_autoRescan && !_busy) await CheckAsync(); };
         DetectExistingBackup();
+        LoadLastChecked();
         SetWelcome();
         Render();
     }
 
     private void SetWelcome()
     {
-        var body = "Finds your saved chat.z.ai sign-in (log in once in your browser), then saves every chat to this computer. Read-only.";
+        // One flow, one button: first run checks and saves; with a backup on
+        // disk the same button becomes an on-demand "what's new up there?".
+        string title = Program.BackupReminder ? "Time for your monthly backup" : "Recover your chats";
+        var body = "Finds your saved chat.z.ai sign-in (log in once in your browser), then saves every chat to this computer. Read-only - and nothing is sent until you press a button.";
+        if (Program.BackupReminder)
+            body = "It's the first of the month - a good moment to save your newest chats. " + body;
         if (_backupDir is not null)
             body += "\n\nEarlier backup found - \"Read my chats\" below is ready.";
-        SetHero("Recover your chats", body, Ui.Text, "Recover my chats", CheckAsync);
+        SetHero(title, body, Ui.Text,
+            _backupDir is not null ? "Check the website now" : "Recover my chats", CheckAsync);
     }
 
     /// <summary>Set the hero card: the reassurance, the explanation, and the
@@ -402,7 +376,7 @@ internal sealed class MainWindow : Window
         // Without this, any tab revisit crashed the app (found the hard way).
         foreach (var c in new Control[] { _heroTitle, _heroBody, _bar, _progressWords,
                                           _primaryBtn, _openBtn, _verifyBtn, _scaleBtn, _autoBox,
-                                          _folderLabel, _log, _verifyOut,
+                                          _folderLabel, _log, _verifyOut, _lastChecked,
                                           _attsSummary, _attsBtn, _attsStatus, _attsList })
             DetachHosted(c);
         if (_reader is { } r) DetachHosted(r);
@@ -489,11 +463,12 @@ internal sealed class MainWindow : Window
         heroStack.Children.Add(_heroBody);
         heroStack.Children.Add(new StackPanel { Spacing = 6, Children = { _bar, _progressWords } });
         heroStack.Children.Add(_primaryBtn);
+        heroStack.Children.Add(_lastChecked);
         hero.Child = heroStack;
 
         var footer = new TextBlock
         {
-            Text = "Free and open source (Apache-2.0) · Your saved sign-in never leaves this computer · Requests go to chat.z.ai only",
+            Text = "Free and open source (Apache-2.0) · Your saved sign-in never leaves this computer · Requests go to chat.z.ai only, and only when you press a button",
             Foreground = Ui.Brush(Ui.Muted), TextWrapping = TextWrapping.Wrap, FontSize = Ui.Small, Margin = new(0, 6, 0, 0)
         };
 
@@ -794,8 +769,8 @@ internal sealed class MainWindow : Window
         sizeRow.Children.Add(_scaleBtn);
         sp1.Children.Add(sizeRow);
         var autoRow = new StackPanel { Spacing = 6 };
-        autoRow.Children.Add(Ui.Txt("Automatic backups", Ui.BodyL, Ui.Text));
-        autoRow.Children.Add(Ui.Txt("Back up all chats on the first of each month, 9 PM, without reminding you.", Ui.Meta, Ui.Muted));
+        autoRow.Children.Add(Ui.Txt("Monthly reminder", Ui.BodyL, Ui.Text));
+        autoRow.Children.Add(Ui.Txt("Open this app on the first of each month, 9 PM, with a nudge to back up. Nothing is sent to the website until you press a button.", Ui.Meta, Ui.Muted));
         _autoBox.VerticalAlignment = VerticalAlignment.Center;
         autoRow.Children.Add(_autoBox);
         sp1.Children.Add(autoRow);
@@ -818,64 +793,70 @@ internal sealed class MainWindow : Window
 
     private void Log(string s) => _log.Text += s + Environment.NewLine;
 
+    /// <summary>The one place the app asks z.ai anything on its own initiative:
+    /// never. This runs only from a button press, queries once, compares with
+    /// the newest backup, and stamps when the website was last checked.</summary>
     private async Task CheckAsync()
     {
         if (_busy) return;
-        _busy = true; _autoRescan = false;
+        _busy = true;
         SetHero("Checking…", "", Ui.Muted, "Checking…", null);
         Log("Looking for a chat.z.ai sign-in in browser storage…");
         try
         {
-            var cands = await Task.Run(Recovery.FindTokenCandidates);
-            Log($"  candidates found: {cands.Count}");
-            foreach (var c in cands.Take(5)) Log($"  {c.Email}  ({c.Where})");
+            var status = await Task.Run(() => Recovery.QueryWebsiteNowAsync(
+                s => Dispatcher.UIThread.Post(() => Log(s))).GetAwaiter().GetResult());
 
-            string? working = null;
-            foreach (var c in cands.Take(8))
-            {
-                if (c.Email.StartsWith("guest-", StringComparison.Ordinal))
-                {
-                    Log("  skipping a guest sign-in - guest mode has its own, empty chat list");
-                    continue;
-                }
-                if (await Task.Run(() => Recovery.TryUseTokenAsync(c.Token).GetAwaiter().GetResult()))
-                {
-                    working = c.Token;
-                    break;
-                }
-            }
-
-            if (working is null)
+            if (status is null)
             {
                 SetHero("Sign in first",
-                    "Open chat.z.ai in your browser and log in with your Google account (not as a guest), then come back - this app re-checks by itself.",
+                    "Open chat.z.ai in your browser and log in with your Google account (not as a guest), then come back and press Try again.",
                     Ui.Warn, "Try again", CheckAsync);
-                Log("No working sign-in. Log in to chat.z.ai in the browser, then switch back to this window.");
-                _autoRescan = true;
+                Log("No working sign-in. Log in to chat.z.ai in the browser, then press Try again.");
+                return;
+            }
+            RememberChecked();
+
+            if (status.ChatIds.Count == 0)
+            {
+                SetHero("This account has no chats",
+                    $"Signed in as {status.Email}. Your chats may be under a different login (for example Google vs email). Log in with that account in the browser, then try again.",
+                    Ui.Warn, "Try again", CheckAsync);
+                Log($"Signed in as {status.Email} (no chats visible).");
+                return;
+            }
+
+            var latest = Snapshots.Latest() ?? _backupDir;
+            HashSet<string>? backedUp = null;
+            if (latest is not null && Directory.Exists(latest))
+                backedUp = await Task.Run(() => BackupReader.ScanBackupFolder(latest)
+                    .Select(s => s.Id).ToHashSet());
+
+            if (backedUp is null)
+            {
+                SetHero($"Your {status.ChatIds.Count} chats are safe",
+                    $"Still on the z.ai website, on the account {status.Email}. Save a copy to this computer.",
+                    Ui.Good, "Save all my chats", SaveAsync);
+                Log($"Signed in as {status.Email} ({status.ChatIds.Count} chats visible, no backup on this computer yet).");
+                return;
+            }
+
+            string backupName = Path.GetFileName(latest!);   // non-null: backedUp branch returned otherwise
+            int missing = status.ChatIds.Count(id => !backedUp.Contains(id));
+            if (missing == 0)
+            {
+                SetHero("Your backup is up to date",
+                    $"Everything on the website ({status.ChatIds.Count} chats) is already in backup \"{backupName}\" - checked just now. Save again any time you like.",
+                    Ui.Good, "Save all my chats anyway", SaveAsync);
+                Log($"Backup \"{backupName}\" is up to date ({status.ChatIds.Count} chats on the website).");
             }
             else
             {
-                var preview = await Task.Run(async () =>
-                {
-                    var chats = await Recovery.ListAllChatsAsync();
-                    return chats.Count == 0
-                        ? (0, "")
-                        : (chats.Count, chats.Max(c => c.TryGetProperty("updated_at", out var u) ? u.GetInt64() : 0).ToString());
-                });
-                if (preview.Item1 == 0)
-                {
-                    SetHero("This account has no chats",
-                        $"Signed in as {Recovery.AccountEmail}. Your chats may be under a different login (for example Google vs email). Log in with that account in the browser, then try again.",
-                        Ui.Warn, "Try again", CheckAsync);
-                    _autoRescan = true;
-                }
-                else
-                {
-                    SetHero($"Your {preview.Item1} chats are safe",
-                        $"Still on the z.ai website, on the account {Recovery.AccountEmail}. Save a copy to this computer.",
-                        Ui.Good, "Save all my chats", SaveAsync);
-                }
-                Log($"Signed in as {Recovery.AccountEmail} ({preview.Item1} chats visible).");
+                var newest = status.NewestUpdated.Length > 0 ? $" - newest activity {status.NewestUpdated}" : "";
+                SetHero($"{missing} chat{(missing == 1 ? "" : "s")} not in your backup yet",
+                    $"On the website, on the account {status.Email}{newest}. Save them to this computer.",
+                    Ui.Good, "Save all my chats", SaveAsync);
+                Log($"{missing} of {status.ChatIds.Count} chats on the website are missing from backup \"{backupName}\".");
             }
         }
         catch (Exception ex)
@@ -883,7 +864,10 @@ internal sealed class MainWindow : Window
             SetHero("Couldn't check just now", Ui.PlainError(ex), Ui.Bad, "Try again", CheckAsync);
             Log("ERROR: " + ex.Message);
         }
-        _busy = false;
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private async Task SaveAsync()
@@ -915,6 +899,7 @@ internal sealed class MainWindow : Window
             _openBtn.IsEnabled = true;
             _backupDir = _outDir;
             RememberBackup(_outDir);
+            RememberChecked();   // a save queried the whole website just now
             SetHero($"{summary.Done} chats saved",
                 $"Backup \"{Path.GetFileName(_outDir)}\" - older backups are untouched.",
                 Ui.Good, "Read my chats", OpenReaderTabAsync);
@@ -984,6 +969,28 @@ internal sealed class MainWindow : Window
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ZaiChatRecovery");
 
     private static string LastBackupFile => Path.Combine(SettingsDir, "last-backup.txt");
+
+    private static string LastCheckedFile => Path.Combine(SettingsDir, "last-checked.txt");
+
+    /// <summary>The app asks the website only when the user presses a button -
+    /// this stamp is how the user sees how old their knowledge is without the
+    /// app ever refreshing on its own.</summary>
+    private void RememberChecked()
+    {
+        var stamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+        try { Directory.CreateDirectory(SettingsDir); File.WriteAllText(LastCheckedFile, stamp); } catch { }
+        _lastChecked.Text = "Last checked the website: " + stamp;
+    }
+
+    private void LoadLastChecked()
+    {
+        try
+        {
+            if (File.Exists(LastCheckedFile))
+                _lastChecked.Text = "Last checked the website: " + File.ReadAllText(LastCheckedFile).Trim();
+        }
+        catch { }
+    }
 
     private static void RememberBackup(string dir)
     {

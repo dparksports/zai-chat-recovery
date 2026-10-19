@@ -212,8 +212,12 @@ space. Caveat learned in testing: an in-place edit of a hardlinked file
 propagates to every snapshot sharing it — which is exactly why each snapshot
 carries a `manifest.json` of per-file SHA-256 hashes and why "Check my
 backups" (`--verify`) exists; it caught precisely that case during
-development. Monthly automation is a Task Scheduler job (Windows) or a
-crontab line (macOS/Linux) running `--auto-backup`. Support flags:
+development. The monthly reminder is a Task Scheduler job (Windows) or a
+crontab line (macOS/Linux) running `--backup-reminder`; it opens the app with
+a nudge and nothing is requested from z.ai until a button press (legacy
+schedules that still pass `--auto-backup` get the same behavior — no headless
+backup exists anymore). Caveat: on Linux, cron without a graphical session
+can't open the window; the reminder is skipped, never a backup. Support flags:
 `--manifest <snap>`, `--dedup <new> <prev>`, `--verify <root>`.
 
 ## 11. The reopen page (`reopen-chats.html`)
