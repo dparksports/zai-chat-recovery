@@ -277,11 +277,19 @@ internal sealed class MainWindow : Window
     private bool _busy;
     private Func<Task>? _primaryAction;
 
-    private enum Tab { Recover, Read, Backups, Tips, Settings }
+    private enum Tab { Recover, Read, Photos, Backups, Tips, Settings }
     private ReaderView? _reader;
     private string? _readerDir;
     private readonly TextBlock _verifyOut = new() { FontSize = Ui.Body, TextWrapping = TextWrapping.Wrap, Foreground = Ui.Brush(Ui.Text) };
     private bool _verifyRan;
+
+    // Photos & files tab: attachment health of the newest backup
+    private sealed record ChatAtts(string Id, string Title, int Saved, int Missing);
+    private List<ChatAtts>? _atts;
+    private readonly TextBlock _attsSummary = new() { FontSize = Ui.BodyL, TextWrapping = TextWrapping.Wrap, Foreground = Ui.Brush(Ui.Text) };
+    private readonly TextBlock _attsStatus = new() { FontSize = Ui.Body, TextWrapping = TextWrapping.Wrap, Foreground = Ui.Brush(Ui.Muted) };
+    private readonly Button _attsBtn = new() { Content = "Update missing from website" };
+    private readonly StackPanel _attsList = new() { Spacing = 6 };
     private Tab _tab = Tab.Recover;
 
     // panic-grade copy: short words, one idea per line. Shown from the
@@ -315,6 +323,7 @@ internal sealed class MainWindow : Window
         _primaryBtn.Click += async (_, _) => { if (_primaryAction is { } a && !_busy) await a(); };
         _openBtn.Click += (_, _) => OpenFolder();
         _verifyBtn.Click += async (_, _) => await VerifyBackupsAsync();
+        _attsBtn.Click += async (_, _) => await UpdateMissingAsync();
         _scaleBtn.Click += (_, _) => { Ui.CycleScale(); Render(); };
         _autoBox.IsChecked = Scheduler.IsScheduled();
         _autoBox.IsCheckedChanged += (_, _) =>
@@ -371,6 +380,7 @@ internal sealed class MainWindow : Window
         side.Children.Add(brand);
         side.Children.Add(TabButton("Recover my chats", Tab.Recover));
         side.Children.Add(TabButton("Read my chats", Tab.Read));
+        side.Children.Add(TabButton("Photos & files", Tab.Photos));
         side.Children.Add(TabButton("Check my backups", Tab.Backups));
         side.Children.Add(TabButton("Dos and don'ts", Tab.Tips));
         side.Children.Add(TabButton("Settings", Tab.Settings));
@@ -383,6 +393,7 @@ internal sealed class MainWindow : Window
         Control page = _tab switch
         {
             Tab.Read => ReadTab(),
+            Tab.Photos => PhotosTab(),
             Tab.Backups => BackupsTab(),
             Tab.Tips => TipsTab(),
             Tab.Settings => SettingsTab(),
@@ -417,6 +428,7 @@ internal sealed class MainWindow : Window
             _tab = t;
             Render();
             if (t == Tab.Backups && !_verifyRan) _ = VerifyBackupsAsync();
+            if (t == Tab.Photos && _atts is null) _ = LoadAttsAsync();
         };
         return b;
     }
@@ -485,6 +497,178 @@ internal sealed class MainWindow : Window
         _tab = Tab.Read;
         Render();
         return Task.CompletedTask;
+    }
+
+    /// <summary>Photos &amp; files: attachment health of the newest backup, in
+    /// plain words. Files go missing because their download links on the
+    /// website expire; one button re-downloads them - only ever into the
+    /// newest backup, whose integrity list is re-stamped afterwards so
+    /// "Check my backups" stays green.</summary>
+    private Control PhotosTab()
+    {
+        var card = Ui.Card();
+        var sp = new StackPanel { Spacing = 12 };
+        sp.Children.Add(new TextBlock { Text = "Photos & files", FontSize = Ui.H2, FontWeight = FontWeight.SemiBold });
+        sp.Children.Add(Ui.Txt("Photos and files inside your chats are saved with your backups. Their links on the website expire, so some can go missing in an older backup. This tab re-downloads the missing ones.", Ui.Meta, Ui.Muted));
+        if (_atts is null)
+            _attsSummary.Text = "Looking through your newest backup…";
+        sp.Children.Add(_attsSummary);
+        Ui.StylePrimary(_attsBtn);
+        _attsBtn.HorizontalAlignment = HorizontalAlignment.Left;
+        sp.Children.Add(_attsBtn);
+        sp.Children.Add(_attsStatus);
+        sp.Children.Add(_attsList);
+        card.Child = sp;
+        var col = new StackPanel { MaxWidth = Math.Round(680 * Ui.Scale) };
+        col.Children.Add(card);
+        return col;
+    }
+
+    private string? AttsDir() => Snapshots.Latest() ?? _backupDir;
+
+    private async Task LoadAttsAsync()
+    {
+        try
+        {
+            var dir = AttsDir();
+            if (dir is null || !Directory.Exists(dir))
+            {
+                _atts = new List<ChatAtts>();
+                _attsSummary.Text = "No backups on this computer yet - recover your chats first.";
+                _attsSummary.Foreground = Ui.Brush(Ui.Warn);
+                _attsBtn.IsEnabled = false;
+                return;
+            }
+            _atts = await Task.Run(() =>
+            {
+                var list = new List<ChatAtts>();
+                foreach (var s in BackupReader.ScanBackupFolder(dir))
+                {
+                    var (saved, missing) = CountAtts(s.JsonPath);
+                    if (saved + missing > 0)
+                        list.Add(new ChatAtts(s.Id, s.Title, saved, missing));
+                }
+                return list.OrderByDescending(a => a.Missing).ThenByDescending(a => a.Saved).ToList();
+            });
+            FillAtts();
+        }
+        catch (Exception ex)
+        {
+            _attsStatus.Text = Ui.PlainError(ex);
+        }
+    }
+
+    private void FillAtts()
+    {
+        if (_atts is null) return;
+        var dir = AttsDir();
+        int saved = _atts.Sum(a => a.Saved), missing = _atts.Sum(a => a.Missing);
+        _attsList.Children.Clear();
+        _attsSummary.Foreground = Ui.Brush(Ui.Text);
+        if (_atts.Count == 0)
+            _attsSummary.Text = "No photos or files are recorded in this backup.";
+        else if (missing == 0)
+            _attsSummary.Text = $"All {saved} photos and files in backup \"{Path.GetFileName(dir ?? "")}\" are saved. Nothing to do.";
+        else
+            _attsSummary.Text = $"{saved} photos and files saved · {missing} missing. Press the button to re-download the missing ones from the website.";
+        foreach (var a in _atts)
+            _attsList.Children.Add(AttsRow(a));
+        _attsBtn.IsEnabled = missing > 0 && !_attsBusy;
+    }
+
+    private Control AttsRow(ChatAtts a)
+    {
+        var tb = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = Ui.Msg };
+        tb.Inlines.Add(new Run { Text = a.Title, FontWeight = FontWeight.SemiBold, Foreground = Ui.Brush(Ui.Text) });
+        tb.Inlines.Add(new Run { Text = $"  · {a.Saved} saved", Foreground = Ui.Brush(Ui.Muted) });
+        if (a.Missing > 0)
+            tb.Inlines.Add(new Run { Text = $" · {a.Missing} missing", FontWeight = FontWeight.SemiBold, Foreground = Ui.Brush(Ui.Warn) });
+        return new Border
+        {
+            Background = Ui.Brush(Ui.Bg), CornerRadius = new CornerRadius(8),
+            Padding = new(10, 6), Child = tb,
+        };
+    }
+
+    private bool _attsBusy;
+
+    private async Task UpdateMissingAsync()
+    {
+        if (_attsBusy || _atts is null) return;
+        var dir = AttsDir();
+        if (dir is null || !Directory.Exists(dir)) return;
+        _attsBusy = true;
+        _attsBtn.IsEnabled = false;
+        _attsStatus.Foreground = Ui.Brush(Ui.Muted);
+        try
+        {
+            if (Recovery.Token is null)
+            {
+                _attsStatus.Text = "Looking for your saved sign-in…";
+                var ok = false;
+                foreach (var c in await Task.Run(Recovery.FindTokenCandidates))
+                {
+                    if (c.Email.StartsWith("guest-", StringComparison.Ordinal)) continue;
+                    if (await Task.Run(() => Recovery.TryUseTokenAsync(c.Token).GetAwaiter().GetResult())) { ok = true; break; }
+                }
+                if (!ok)
+                {
+                    _attsStatus.Text = "No working sign-in - open chat.z.ai in your browser, log in, then try again.";
+                    _attsStatus.Foreground = Ui.Brush(Ui.Warn);
+                    return;
+                }
+            }
+            var todo = _atts.Where(a => a.Missing > 0).ToList();
+            int done = 0, files = 0, failed = 0;
+            foreach (var a in todo)
+            {
+                done++;
+                _attsStatus.Text = $"Updating chat {done} of {todo.Count} - {a.Title}";
+                try
+                {
+                    var (_, att, _) = await Task.Run(() => Recovery.RefetchChatAsync(a.Id, a.Title, dir).GetAwaiter().GetResult());
+                    files += att;
+                }
+                catch { failed++; }
+                await Task.Delay(400);
+            }
+            // files in the newest backup changed: re-stamp its integrity list
+            if (Path.GetDirectoryName(Path.GetFullPath(dir)) is { } parent &&
+                string.Equals(parent, Snapshots.Root, StringComparison.OrdinalIgnoreCase))
+            {
+                try { Snapshots.WriteManifest(dir); } catch { }
+            }
+            await LoadAttsAsync();
+            _attsStatus.Text = failed == 0
+                ? $"Done - {files} photos and files saved into backup \"{Path.GetFileName(dir)}\"."
+                : $"Done - {files} saved, {failed} chat(s) could not be updated (the website may be busy - try again later).";
+        }
+        finally
+        {
+            _attsBusy = false;
+            if (_atts is not null) _attsBtn.IsEnabled = _atts.Any(x => x.Missing > 0);
+        }
+    }
+
+    /// <summary>Count saved/missing attachments in a v2 backup json without
+    /// loading full transcripts.</summary>
+    private static (int saved, int missing) CountAtts(string jsonPath)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(jsonPath));
+            var r = doc.RootElement;
+            if (!r.TryGetProperty("messages", out var ms) || ms.ValueKind != System.Text.Json.JsonValueKind.Array)
+                return (0, 0);
+            int saved = 0, missing = 0;
+            foreach (var m in ms.EnumerateArray())
+                if (m.TryGetProperty("attachments", out var aa) && aa.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    foreach (var a in aa.EnumerateArray())
+                        if (a.TryGetProperty("missing", out var mi) && mi.ValueKind == System.Text.Json.JsonValueKind.True) missing++;
+                        else saved++;
+            return (saved, missing);
+        }
+        catch { return (0, 0); }
     }
 
     /// <summary>The DO/DON'T reassurance card - its own tab, so it never

@@ -90,6 +90,14 @@ structured in the v2 JSON. Failures are recorded as `missing: true` rather
 than dropped. The repair path ("Fetch attachments") re-syncs one chat — and
 **refuses to overwrite an existing backup if the API returns no content**,
 because a rate-limited response must never destroy a good backup.
+The **Photos & files** tab is the plain-words front for that repair: it
+counts saved/missing per chat from the v2 JSON (python-schema backups have
+no attachment records and read as zero), lists chats with anything missing,
+and "Update missing from website" re-fetches each affected chat — always
+into the **newest** snapshot only, re-stamping its `manifest.json`
+afterwards (updating files inside a manifest-covered snapshot without
+re-stamping would make "Check my backups" report corruption; the old
+per-chat reader button had exactly that latent bug).
 
 ## 5. Restore (import) contract
 

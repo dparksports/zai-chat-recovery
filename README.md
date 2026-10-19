@@ -26,6 +26,7 @@ Everything lives behind five plain-word tabs on the left:
 |---|---|
 | **Recover my chats** | Check, then save — one button at a time |
 | **Read my chats** | Every conversation, readable like a chat, with search |
+| **Photos & files** | Shows saved photos and files; re-downloads missing ones |
 | **Check my backups** | Proves every saved file is intact |
 | **Dos and don'ts** | Calm advice if the list goes empty again |
 | **Settings** | Bigger text, monthly backups, technical details |
@@ -70,7 +71,7 @@ The short version: **save first, don't fix later.** Don't log out, don't clear a
 
 Every backup includes a page called **`reopen-chats.html`** — double-click it any time. It lists every chat with an **Open** button, so each conversation is one click away **even while the website's chat list looks empty**. "Open the next 10 chats" opens them in order and counts along.
 
-The same page lives behind the **"Open my chats on the website"** button in the reader — that version lists every chat from **every** backup you've ever made, and marks chats that only exist in older backups. Terminal folks: `python recover_zai_chats.py --open 10` reopens the 10 newest right away.
+The same page lives behind the **"Open chats in browser"** button in the reader — that version lists every chat from **every** backup you've ever made, and marks chats that only exist in older backups. Terminal folks: `python recover_zai_chats.py --open 10` reopens the 10 newest right away.
 
 ## Reading your saved chats
 
@@ -80,7 +81,11 @@ Open the **"Read my chats"** tab and every conversation is there in a clean list
 
 **To open a chat on the website, straight from this tab:** double-click it in the list (or use the "Open on chat.z.ai" button). It opens in your browser, on the chat itself — no extra steps.
 
-**"Update from website"** re-reads the selected chat from chat.z.ai and re-downloads its photos and files, refreshing your backup copy of that one chat.
+## Photos & files
+
+Photos and files inside your chats are saved with your backups — but their links on the z.ai website **expire**, so files in a backup can go missing over time.
+
+The **"Photos & files"** tab shows, in plain words, how many photos and files each chat has saved and flags the missing ones. One button — **"Update missing from website"** — re-downloads everything that's missing, with progress shown chat by chat. It only ever writes into your **newest** backup (older ones stay untouched), and it refreshes that backup's integrity list afterwards so "Check my backups" stays green.
 
 ## Bringing a chat back
 

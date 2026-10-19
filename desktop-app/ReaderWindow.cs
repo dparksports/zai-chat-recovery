@@ -22,9 +22,8 @@ internal sealed class ReaderView : UserControl
     private readonly TextBox _search = new() { Watermark = "Search chats…", FontSize = Ui.Body, MinHeight = 44 };
     private readonly TextBlock _chatTitle = new() { FontSize = Ui.Title, FontWeight = FontWeight.Bold, Foreground = Ui.Brush(Ui.Text), TextWrapping = TextWrapping.Wrap };
     private readonly Button _openWeb = new() { Content = "Open on chat.z.ai", IsEnabled = false };
-    private readonly Button _fetchBtn = new() { Content = "Update from website" };
     private readonly Button _pasteBtn = new() { Content = "Continue by paste" };
-    private readonly Button _reopenBtn = new() { Content = "Open my chats on the website" };
+    private readonly Button _reopenBtn = new() { Content = "Open chats in browser" };
     private readonly TextBlock _status = new() { FontSize = Ui.Meta, Foreground = Ui.Brush(Ui.Muted), TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _head = new() { FontSize = Ui.H2, FontWeight = FontWeight.Bold, Foreground = Ui.Brush(Ui.Accent) };
     private List<MessageView> _currentViews = new();
@@ -42,7 +41,6 @@ internal sealed class ReaderView : UserControl
 
         _search.TextChanged += (_, _) => RefreshList();
 
-        _fetchBtn.Click += async (_, _) => await FetchCurrentAsync();
         _pasteBtn.Click += async (_, _) => await PasteContinueAsync();
         _reopenBtn.Click += async (_, _) => await ReopenInBrowserAsync();
 
@@ -104,7 +102,7 @@ internal sealed class ReaderView : UserControl
                     }
                 };
             }
-            _status.Text = "Showing the newest backup. Pick an earlier date to go back in time.";
+            _status.Text = "Double-click a chat to open it on chat.z.ai. Showing the newest backup - pick an earlier date to go back in time.";
         }
 
         RenderReader();
@@ -112,6 +110,8 @@ internal sealed class ReaderView : UserControl
         if (_all.Count > 0) _list.SelectedIndex = 0;
         if (_status.Text.Length == 0)
             _status.Text = "Click a chat to read it here. Double-click it to open it on chat.z.ai in your browser.";
+        else if (!_status.Text.StartsWith("Double-click"))
+            _status.Text = "Double-click a chat to open it on chat.z.ai. " + _status.Text;
     }
 
     private readonly Avalonia.Controls.ComboBox _snapCombo = new() { MinWidth = 170 };
@@ -122,7 +122,7 @@ internal sealed class ReaderView : UserControl
     private void RenderReader()
     {
         _head.Text = $"Your chats ({_all.Count})";
-        foreach (var b in new[] { _openWeb, _fetchBtn, _pasteBtn, _reopenBtn })
+        foreach (var b in new[] { _openWeb, _pasteBtn, _reopenBtn })
         {
             b.FontSize = Ui.Meta;
             b.MinHeight = Ui.BtnHCompact;
@@ -177,15 +177,11 @@ internal sealed class ReaderView : UserControl
         Grid.SetColumn(left, 0);
         body.Children.Add(right);
         Grid.SetColumn(right, 1);
-        var topGrid = new Grid { ColumnDefinitions = new("*, Auto, Auto"), Margin = new(0, 8, 0, 0) };
+        var topGrid = new Grid { ColumnDefinitions = new("*, Auto"), Margin = new(0, 8, 0, 0) };
         topGrid.Children.Add(titleHost);
         _openWeb.VerticalAlignment = VerticalAlignment.Center;
         topGrid.Children.Add(_openWeb);
         Grid.SetColumn(_openWeb, 1);
-        _fetchBtn.VerticalAlignment = VerticalAlignment.Center;
-        _fetchBtn.Margin = new(10, 0, 0, 0);
-        topGrid.Children.Add(_fetchBtn);
-        Grid.SetColumn(_fetchBtn, 2);
 
         // Grid (not StackPanel) so the body gets bounded height - a StackPanel
         // gives infinite height, which makes the ScrollViewer size to content
@@ -392,45 +388,6 @@ internal sealed class ReaderView : UserControl
                     reveal ? Path.GetDirectoryName(full) ?? full : full);
         }
         catch { }
-    }
-
-    private async Task FetchCurrentAsync()    {
-        if (_current is not { } cur) { _status.Text = "Select a chat first."; return; }
-        _fetchBtn.IsEnabled = false;
-        try
-        {
-            if (Recovery.Token is null)
-            {
-                _status.Text = "Looking for your saved sign-in…";
-                var ok = false;
-                foreach (var c in await Task.Run(Recovery.FindTokenCandidates))
-                {
-                    if (c.Email.StartsWith("guest-", StringComparison.Ordinal)) continue;
-                    if (await Task.Run(() => Recovery.TryUseTokenAsync(c.Token).GetAwaiter().GetResult()))
-                    {
-                        ok = true;
-                        break;
-                    }
-                }
-                if (!ok)
-                {
-                    _status.Text = "No working sign-in - open chat.z.ai in your browser, log in, then try again.";
-                    return;
-                }
-            }
-            _status.Text = "Fetching this chat and its attachments from chat.z.ai…";
-            var (n, att, _) = await Task.Run(() => Recovery.RefetchChatAsync(cur.Id, cur.Title, _dir).GetAwaiter().GetResult());
-            _all.Clear();
-            _all.AddRange(BackupReader.ScanBackupFolder(_dir));
-            RefreshList();
-            var idx = _all.FindIndex(x => x.Id == cur.Id);
-            if (idx >= 0) _list.SelectedIndex = idx;
-            _status.Text = att > 0
-                ? $"Saved {att} attachment(s) - {n} messages refreshed."
-                : $"No attachments on this chat - {n} messages refreshed.";
-        }
-        catch (Exception ex) { _status.Text = "Could not fetch: " + ex.Message; }
-        finally { _fetchBtn.IsEnabled = true; }
     }
 
     private readonly record struct Segment(string Text, bool IsCode);
