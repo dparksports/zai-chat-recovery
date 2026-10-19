@@ -29,6 +29,27 @@ internal static class Program
         TaskScheduler.UnobservedTaskException += (_, e) => { WriteCrash(e.Exception); e.SetObserved(); };
     }
 
+    internal static bool UiSmokeMode;
+
+    /// <summary>UI regression run: render every tab in several orders -
+    /// users start everywhere, and the crash class this catches ("control
+    /// already has a visual parent" on tab revisit) only shows on the second
+    /// visit. Result lands in %TEMP%/zai-uismoke.txt.</summary>
+    private static int UiSmoke()
+    {
+        UiSmokeMode = true;
+        try
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(Array.Empty<string>());
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            try { File.WriteAllText(Path.Combine(Path.GetTempPath(), "zai-uismoke.txt"), "EXCEPTION " + ex); } catch { }
+            return 4;
+        }
+    }
+
     internal static void WriteCrash(object? ex) =>
         File.AppendAllText(Path.Combine(Path.GetTempPath(), "zai-recovery-crash.log"),
             $"[{DateTime.Now:O}] {ex}{Environment.NewLine}");
@@ -38,6 +59,8 @@ internal static class Program
     {
         if (args.Contains("--selftest", StringComparer.OrdinalIgnoreCase))
             return SelfTest.Run();
+        if (args.Contains("--ui-smoke", StringComparer.OrdinalIgnoreCase))
+            return UiSmoke();
         for (int i = 0; i < args.Length - 1; i++)
         {
             if (args[i].Equals("--open-reader", StringComparison.OrdinalIgnoreCase))
@@ -250,6 +273,8 @@ internal sealed class App : Application
                 desktop.MainWindow = Program.ReaderPath is { Length: > 0 } p && Directory.Exists(p)
                     ? new ReaderWindow(p)
                     : new MainWindow();
+                if (Program.UiSmokeMode && desktop.MainWindow is MainWindow mw)
+                    mw.Loaded += (_, _) => _ = mw.RunUiSmokeAsync();
             }
             catch (Exception ex) { Program.WriteCrash(ex); throw; }
         }
@@ -313,6 +338,7 @@ internal sealed class MainWindow : Window
         Title = "Z.ai Chat Recovery";
         Width = 900; Height = 780;
         Background = Ui.Brush(Ui.Bg);
+        Ui.TrySetIcon(this);
         MinWidth = 780; MinHeight = 640;
 
         _outDir = Snapshots.NextSnapshotDir();
@@ -370,6 +396,17 @@ internal sealed class MainWindow : Window
     /// states, text and scroll positions survive a rebuild.</summary>
     private void Render()
     {
+        // Re-parenting a control that still sits in the outgoing (discarded)
+        // tree throws "already has a visual parent" - Avalonia only detaches
+        // the top of the old tree, so detach our persistent controls first.
+        // Without this, any tab revisit crashed the app (found the hard way).
+        foreach (var c in new Control[] { _heroTitle, _heroBody, _bar, _progressWords,
+                                          _primaryBtn, _openBtn, _verifyBtn, _scaleBtn, _autoBox,
+                                          _folderLabel, _log, _verifyOut,
+                                          _attsSummary, _attsBtn, _attsStatus, _attsList })
+            DetachHosted(c);
+        if (_reader is { } r) DetachHosted(r);
+
         _scaleBtn.Content = "Text size: " + Ui.ScaleName;
         Ui.StylePrimary(_primaryBtn);
         foreach (var b in new[] { _openBtn, _verifyBtn, _scaleBtn }) Ui.StyleSecondary(b);
@@ -406,6 +443,17 @@ internal sealed class MainWindow : Window
         grid.Children.Add(scroll);
         Grid.SetColumn(scroll, 1);
         Content = grid;
+    }
+
+    private static void DetachHosted(Control c)
+    {
+        switch (c.Parent)
+        {
+            case Panel p: p.Children.Remove(c); break;
+            case ContentControl cc: cc.Content = null; break;
+            case Border b: b.Child = null; break;
+            case Decorator d: d.Child = null; break;
+        }
     }
 
     private Button TabButton(string label, Tab t)
@@ -490,6 +538,30 @@ internal sealed class MainWindow : Window
         var col = new StackPanel { MaxWidth = Math.Round(680 * Ui.Scale) };
         col.Children.Add(card);
         return col;
+    }
+
+    internal async Task RunUiSmokeAsync()
+    {
+        var result = "OK";
+        try
+        {
+            foreach (var t in new[] { Tab.Photos, Tab.Recover, Tab.Read, Tab.Settings,
+                                      Tab.Backups, Tab.Tips, Tab.Photos, Tab.Recover,
+                                      Tab.Read, Tab.Backups, Tab.Settings })
+            {
+                _tab = t;
+                Render();
+                await Task.Delay(30);
+            }
+            SetWelcome();
+            Render();
+        }
+        catch (Exception ex)
+        {
+            result = "EXCEPTION " + ex.GetType().Name + ": " + ex.Message;
+        }
+        try { File.WriteAllText(Path.Combine(Path.GetTempPath(), "zai-uismoke.txt"), result); } catch { }
+        Environment.Exit(0);
     }
 
     private Task OpenReaderTabAsync()

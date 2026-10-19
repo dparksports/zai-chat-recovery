@@ -121,6 +121,11 @@ internal sealed class ReaderView : UserControl
     /// survive a rebuild.</summary>
     private void RenderReader()
     {
+        // same re-parenting guard as the main window (see MainWindow.Render)
+        foreach (var c in new Control[] { _head, _search, _list, _chatTitle, _openWeb,
+                                          _pasteBtn, _reopenBtn, _snapCombo, _status, _scroller })
+            DetachHosted(c);
+
         _head.Text = $"Your chats ({_all.Count})";
         foreach (var b in new[] { _openWeb, _pasteBtn, _reopenBtn })
         {
@@ -217,6 +222,17 @@ internal sealed class ReaderView : UserControl
         else _chatTitle.Text = "(nothing in this backup)";
         _current = null;
         _openWeb.IsEnabled = false;
+    }
+
+    private static void DetachHosted(Control c)
+    {
+        switch (c.Parent)
+        {
+            case Panel p: p.Children.Remove(c); break;
+            case ContentControl cc: cc.Content = null; break;
+            case Border b: b.Child = null; break;
+            case Decorator d: d.Child = null; break;
+        }
     }
 
     private ChatSummary? _current;
@@ -497,6 +513,7 @@ internal sealed class ReaderWindow : Window
         Width = 1120; Height = 780;
         MinWidth = 900; MinHeight = 600;
         Background = Ui.Brush(Ui.Bg);
+        Ui.TrySetIcon(this);
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         Content = new ReaderView(folder);
     }

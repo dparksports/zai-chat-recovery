@@ -67,6 +67,7 @@ jobs:
           # (embedded dylibs fail signature checks -> killed on launch). Ship the
           # full publish output instead and sign the whole tree.
           cp -R publish/. "ZaiChatRecovery.app/Contents/MacOS/"
+          cp assets/app.icns "ZaiChatRecovery.app/Contents/Resources/AppIcon.icns"
           chmod +x "ZaiChatRecovery.app/Contents/MacOS/ZaiChatRecovery"
           cat > "ZaiChatRecovery.app/Contents/Info.plist" <<'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
@@ -76,6 +77,7 @@ jobs:
             <key>CFBundleExecutable</key><string>ZaiChatRecovery</string>
             <key>CFBundleIdentifier</key><string>org.dpark.zai-chat-recovery</string>
             <key>CFBundleName</key><string>Z.ai Chat Recovery</string>
+            <key>CFBundleIconFile</key><string>AppIcon</string>
             <key>CFBundlePackageType</key><string>APPL</string>
             <key>CFBundleShortVersionString</key><string>1.1.0</string>
             <key>LSMinimumSystemVersion</key><string>11.0</string>
@@ -105,6 +107,7 @@ jobs:
       - name: package tarball with .desktop file
         run: |
           cp zai-chat-recovery.desktop publish/ 2>/dev/null || true
+          cp assets/app-icon-256.png publish/ZaiChatRecovery.png 2>/dev/null || true
           tar czf ZaiChatRecovery-linux-x64.tar.gz -C publish .
       - uses: actions/upload-artifact@v4
         with:

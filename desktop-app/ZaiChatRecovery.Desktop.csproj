@@ -8,17 +8,22 @@
     <Nullable>enable</Nullable>
     <AssemblyName>ZaiChatRecovery</AssemblyName>
     <RootNamespace>ZaiChatRecovery.Desktop</RootNamespace>
-    <Version>2026.10.23.1</Version>
+    <Version>2026.10.24.1</Version>
     <Product>Z.ai Chat Recovery</Product>
     <Description>Recover chat.z.ai conversations when the sidebar shows empty. Read-only. Windows/macOS/Linux.</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.2" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\app.ico" />
   </ItemGroup>
 
 </Project>

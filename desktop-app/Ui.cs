@@ -151,4 +151,16 @@ internal static class Ui
 
     public static Button Primary(string text) { var b = new Button { Content = text }; StylePrimary(b); return b; }
     public static Button Secondary(string text) { var b = new Button { Content = text }; StyleSecondary(b); return b; }
+
+    /// <summary>Window icon from the embedded app.ico. A missing icon is
+    /// cosmetic - it must never take the app down.</summary>
+    public static void TrySetIcon(Avalonia.Controls.Window w)
+    {
+        try
+        {
+            using var s = Avalonia.Platform.AssetLoader.Open(new Uri("avares://ZaiChatRecovery/Assets/app.ico"));
+            w.Icon = new Avalonia.Controls.WindowIcon(s);
+        }
+        catch { }
+    }
 }

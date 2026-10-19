@@ -151,6 +151,20 @@ Avalonia gotchas paid for in bug reports, so you don't have to:
 - **Font:** Segoe UI is pinned on Windows only (present since Vista). macOS
   and Linux keep Avalonia's system default (SF Pro / the distro UI font) —
   overriding there risks missing-family tofu for no visual gain.
+- **Re-parenting crash (2026-10-18, found by a user):** replacing window
+  content only detaches the top of the outgoing tree; persistent controls
+  stay children of panels inside the discarded tree, and re-adding them on
+  the next `Render()` throws "already has a visual parent" - so ANY tab
+  revisit crashed. Fix: `DetachHosted()` strips each hosted control from its
+  outgoing parent before rebuilding (both windows). Regression-tested by
+  `--ui-smoke`: renders every tab in several orders and exits non-zero on
+  any exception (the bug only ever fired on the second visit).
+- **App icon** is generated, not drawn by hand: a GDI+ script draws the
+  blue-tile/white-check mark at 16–512 px (`assets/icon-src/`), then a tiny
+  assembler packs PNG-in-ICO (`assets/app.ico`) and PNG-in-ICNS
+  (`assets/app.icns`). Windows: `ApplicationIcon` + `WindowIcon` from the
+  embedded AvaloniaResource; macOS/Linux get theirs wired in `release.yml`
+  (CFBundleIconFile / ZaiChatRecovery.png + .desktop).
 - **Main window = tab rail** (Recover my chats / Read my chats / Check my
   backups / Dos and don'ts / Settings). The reader is a `ReaderView`
   `UserControl` shared by the Read tab and the `--open-reader` window; dialogs

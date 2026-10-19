@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Z.ai Chat Recovery
+Comment=Check, save and reopen your chat.z.ai conversations (read-only)
+Exec=ZaiChatRecovery
+Icon=ZaiChatRecovery
+Terminal=false
+Categories=Utility;FileTools;
