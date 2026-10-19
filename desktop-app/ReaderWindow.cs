@@ -22,11 +22,9 @@ internal sealed class ReaderView : UserControl
     private readonly TextBox _search = new() { Watermark = "Search chats…", FontSize = Ui.Body, MinHeight = 44 };
     private readonly TextBlock _chatTitle = new() { FontSize = Ui.Title, FontWeight = FontWeight.Bold, Foreground = Ui.Brush(Ui.Text), TextWrapping = TextWrapping.Wrap };
     private readonly Button _openWeb = new() { Content = "Open on chat.z.ai", IsEnabled = false };
-    private readonly Button _fetchBtn = new() { Content = "Fetch attachments" };
+    private readonly Button _fetchBtn = new() { Content = "Update from website" };
     private readonly Button _pasteBtn = new() { Content = "Continue by paste" };
     private readonly Button _reopenBtn = new() { Content = "Open my chats on the website" };
-    private readonly Button _restoreBtn = new() { Content = "Restore to my account…" };
-    private readonly Button _scaleBtn = new() { Content = "Text size: Normal" };
     private readonly TextBlock _status = new() { FontSize = Ui.Meta, Foreground = Ui.Brush(Ui.Muted), TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _head = new() { FontSize = Ui.H2, FontWeight = FontWeight.Bold, Foreground = Ui.Brush(Ui.Accent) };
     private List<MessageView> _currentViews = new();
@@ -46,9 +44,15 @@ internal sealed class ReaderView : UserControl
 
         _fetchBtn.Click += async (_, _) => await FetchCurrentAsync();
         _pasteBtn.Click += async (_, _) => await PasteContinueAsync();
-        _restoreBtn.Click += async (_, _) => await RestoreAsync();
         _reopenBtn.Click += async (_, _) => await ReopenInBrowserAsync();
-        _scaleBtn.Click += (_, _) => { Ui.CycleScale(); RenderReader(); };
+
+        // click = read here; double-click = open this chat on chat.z.ai in the
+        // default browser - no intermediate page needed
+        _list.DoubleTapped += (_, _) =>
+        {
+            if (_current is { } cur)
+                OpenUrl("https://chat.z.ai/c/" + cur.Id);
+        };
 
         _openWeb.Click += (_, _) =>
         {
@@ -106,6 +110,8 @@ internal sealed class ReaderView : UserControl
         RenderReader();
         RefreshList();
         if (_all.Count > 0) _list.SelectedIndex = 0;
+        if (_status.Text.Length == 0)
+            _status.Text = "Click a chat to read it here. Double-click it to open it on chat.z.ai in your browser.";
     }
 
     private readonly Avalonia.Controls.ComboBox _snapCombo = new() { MinWidth = 170 };
@@ -116,8 +122,7 @@ internal sealed class ReaderView : UserControl
     private void RenderReader()
     {
         _head.Text = $"Your chats ({_all.Count})";
-        _scaleBtn.Content = "Text size: " + Ui.ScaleName;
-        foreach (var b in new[] { _openWeb, _fetchBtn, _pasteBtn, _reopenBtn, _restoreBtn, _scaleBtn })
+        foreach (var b in new[] { _openWeb, _fetchBtn, _pasteBtn, _reopenBtn })
         {
             b.FontSize = Ui.Meta;
             b.MinHeight = Ui.BtnHCompact;
@@ -131,7 +136,7 @@ internal sealed class ReaderView : UserControl
         };
 
         var actions = new WrapPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
-        foreach (var b in new[] { _reopenBtn, _pasteBtn, _restoreBtn })
+        foreach (var b in new[] { _reopenBtn, _pasteBtn })
         {
             b.Margin = new(0, 0, 10, 6);
             actions.Children.Add(b);
@@ -147,8 +152,6 @@ internal sealed class ReaderView : UserControl
             _snapCombo.Margin = new(0, 0, 10, 6);
             actions.Children.Add(_snapCombo);
         }
-        _scaleBtn.Margin = new(0, 0, 10, 6);
-        actions.Children.Add(_scaleBtn);
 
         var titleHost = new ContentControl { Content = _chatTitle, HorizontalAlignment = HorizontalAlignment.Stretch };
 
@@ -485,46 +488,6 @@ internal sealed class ReaderView : UserControl
         }
         if (sb.Length > 28000) sb.Length = 28000;
         return sb.ToString();
-    }
-
-    private async Task RestoreAsync()
-    {
-        if (_current is not { } cur) return;
-        if (TopLevel.GetTopLevel(this) is not Window owner) return;
-        var ok = await ConfirmBox.ShowAsync(owner, "Restore this chat to your account?",
-            $"This creates a copy of \"{cur.Title}\" as a new chat in your z.ai account.\n\n" +
-            "This is the ONLY thing this app can ever write to your account, and it never deletes or changes anything else. " +
-            "The copy will appear as \"New Chat\" - rename it after opening.\n\nContinue?");
-        if (!ok) return;
-        _restoreBtn.IsEnabled = false;
-        try
-        {
-            if (Recovery.Token is null)
-            {
-                _status.Text = "Looking for your saved sign-in…";
-                var found = false;
-                foreach (var c in await Task.Run(Recovery.FindTokenCandidates))
-                {
-                    if (c.Email.StartsWith("guest-", StringComparison.Ordinal)) continue;
-                    if (await Task.Run(() => Recovery.TryUseTokenAsync(c.Token).GetAwaiter().GetResult()))
-                    {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                {
-                    _status.Text = "No working sign-in - open chat.z.ai in your browser, log in, then try again.";
-                    return;
-                }
-            }
-            _status.Text = "Restoring to your account…";
-            var (newId, n) = await Task.Run(() => Recovery.RestoreToAccountAsync(cur.JsonPath).GetAwaiter().GetResult());
-            _status.Text = $"Restored as a new chat ({n} messages). Opening it…";
-            OpenUrl("https://chat.z.ai/c/" + newId);
-        }
-        catch (Exception ex) { _status.Text = "Could not restore: " + ex.Message; }
-        finally { _restoreBtn.IsEnabled = true; }
     }
 
     private async Task ReopenInBrowserAsync()

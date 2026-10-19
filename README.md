@@ -76,16 +76,17 @@ The same page lives behind the **"Open my chats on the website"** button in the 
 
 ![Viewer](assets/viewer.svg)
 
-Open the **"Read my chats"** tab and every conversation is there in a clean list. Search by name, click one, and read it like a chat — with any photos or files shown right where they appeared, and a button to open the same chat on the website.
+Open the **"Read my chats"** tab and every conversation is there in a clean list. Search by name, click one, and read it like a chat — with any photos or files shown right where they appeared.
+
+**To open a chat on the website, straight from this tab:** double-click it in the list (or use the "Open on chat.z.ai" button). It opens in your browser, on the chat itself — no extra steps.
+
+**"Update from website"** re-reads the selected chat from chat.z.ai and re-downloads its photos and files, refreshing your backup copy of that one chat.
 
 ## Bringing a chat back
 
-![Two ways to restore](assets/restore-two-ways.svg)
+- **Continue by paste** — copies the whole conversation so you can paste it into a new chat on the website and keep going. Nothing is written to your account. This is the safe path.
 
-Two buttons, your choice:
-
-- **Continue by paste** — copies the whole conversation so you can paste it into a new chat and keep going. Nothing is written to your account. This is the safe path.
-- **Restore to my account…** — puts the chat back on the website as a new conversation (it appears as "New Chat"; rename it after opening). This is the **only** thing this app can ever write to your account — it happens only after you say yes to one clear question, and it never deletes or changes anything else.
+(Putting a chat back on the website as a new conversation will return soon — we've removed that button for now while we make it clearer.)
 
 ## Never lose them again: dated backups
 
